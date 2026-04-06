@@ -285,6 +285,7 @@ class AudioManager {
     this.voiceOscillator = null;
     this.voiceUpperOscillator = null;
     this.warningOscillator = null;
+    this.nextAccentAt = 0;
     this.ready = false;
   }
 
@@ -365,13 +366,14 @@ class AudioManager {
     }
 
     const now = this.context.currentTime;
+    const wallTime = performance.now();
     const motionRatio = clamp(speedRatio, 0, 1.35);
     const voiceTarget = isSafeMotion ? 0.016 + motionRatio * 0.04 : 0.0001;
     const warningTarget =
       isSafeMotion && motionRatio > 0.35
         ? clamp((motionRatio - 0.35) * 0.085, 0, 0.07)
         : 0.0001;
-    const time = performance.now() * 0.001;
+    const time = wallTime * 0.001;
     const wobble = Math.sin(time * (4.5 + motionRatio * 5.5));
     const chatter = Math.sin(time * (8 + motionRatio * 11) + motionRatio * 2.5);
     const basePitch = 145 + motionRatio * 60 + wobble * 12 + chatter * 5;
@@ -397,6 +399,12 @@ class AudioManager {
       now,
       0.04
     );
+
+    if (motionRatio > 0.08 && wallTime >= this.nextAccentAt) {
+      this.playMoveAccent(motionRatio, isSafeMotion);
+      this.nextAccentAt =
+        wallTime + lerp(240, 110, clamp(motionRatio, 0, 1)) + Math.random() * 140;
+    }
   }
 
   quiet() {
@@ -407,6 +415,48 @@ class AudioManager {
     const now = this.context.currentTime;
     this.voiceGain.gain.setTargetAtTime(0.0001, now, 0.08);
     this.warningGain.gain.setTargetAtTime(0.0001, now, 0.05);
+    this.nextAccentAt = 0;
+  }
+
+  playMoveAccent(speedRatio, isSafeMotion) {
+    if (!this.ready) {
+      return;
+    }
+
+    const now = this.context.currentTime;
+    const accentGain = this.context.createGain();
+    const accentFilter = this.context.createBiquadFilter();
+    const accentOscillator = this.context.createOscillator();
+    const baseFrequency = 230 + Math.random() * 420 + speedRatio * 170;
+    const endFrequency = Math.max(
+      80,
+      baseFrequency * (0.82 + Math.random() * 0.75)
+    );
+    const duration = 0.045 + Math.random() * 0.07;
+    const volume = (isSafeMotion ? 0.014 : 0.01) + Math.random() * 0.015;
+
+    accentOscillator.type = chooseRandom(["triangle", "square", "sine"]);
+    accentOscillator.frequency.setValueAtTime(baseFrequency, now);
+    accentOscillator.frequency.exponentialRampToValueAtTime(
+      endFrequency,
+      now + duration * 0.9
+    );
+    accentOscillator.detune.setValueAtTime((Math.random() - 0.5) * 260, now);
+
+    accentFilter.type = chooseRandom(["bandpass", "highpass"]);
+    accentFilter.Q.value = 3 + Math.random() * 8;
+    accentFilter.frequency.setValueAtTime(900 + Math.random() * 1700, now);
+
+    accentGain.gain.setValueAtTime(0.0001, now);
+    accentGain.gain.linearRampToValueAtTime(volume, now + 0.008);
+    accentGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    accentOscillator.connect(accentFilter);
+    accentFilter.connect(accentGain);
+    accentGain.connect(this.masterGain);
+
+    accentOscillator.start(now);
+    accentOscillator.stop(now + duration + 0.03);
   }
 
   playBuzzer() {
