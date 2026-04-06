@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silent Maze</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hud">
+        <div class="pill glow">
+          <strong>SILENT MAZE</strong>
+        </div>
+
+        <div class="pill controls-pill">
+          <span>Controls</span>
+          <strong>WASD / Arrows</strong>
+        </div>
+
+        <div class="stats">
+          <div class="level">
+            <span>Level</span>
+            <strong id="levelValue">1</strong>
+          </div>
+
+          <div class="timer">
+            <span>Timer</span>
+            <strong id="timerValue">00:00.000</strong>
+          </div>
+
+          <div class="stat">
+            <span>Best</span>
+            <strong id="bestValue">--</strong>
+          </div>
+
+          <div class="stat">
+            <span>Pattern</span>
+            <strong id="patternValue">Prime Run</strong>
+          </div>
+
+          <div class="stat">
+            <span>Challenge</span>
+            <strong id="challengeValue">Steady</strong>
+          </div>
+
+          <div class="stat">
+            <span>Handling</span>
+            <strong id="handlingValue">Soft</strong>
+          </div>
+        </div>
+
+        <div class="speed-meter">
+          <div class="label">
+            <span>Stealth Speed</span>
+            <strong id="speedLabel">Stand by</strong>
+          </div>
+
+          <div class="track" aria-hidden="true">
+            <div class="speed-fill" id="speedFill"></div>
+          </div>
+        </div>
+      </header>
+
+      <main class="panel">
+        <canvas
+          id="gameCanvas"
+          aria-label="Silent Maze game canvas"
+          role="img"
+        ></canvas>
+
+        <div class="panel-meta">
+          <p class="hint" id="statusHint">
+            Stay quiet. Touching walls or rushing the route will trigger the alarm.
+          </p>
+
+          <div class="shortcut-list" aria-label="Keyboard shortcuts">
+            <span class="shortcut">Space start / pause</span>
+            <span class="shortcut">R restart</span>
+            <span class="shortcut">M menu</span>
+          </div>
+        </div>
+
+        <div class="overlay show start-screen" id="overlay">
+          <div class="card">
+            <p class="subtle" id="overlayKicker">Silent Run</p>
+            <h2 id="overlayTitle">SILENT MAZE</h2>
+            <p id="overlayDescription">
+              Navigate the neon labyrinth without scraping a wall or breaking the
+              speed threshold.
+            </p>
+
+            <div class="overlay-metrics">
+              <div class="overlay-pill">
+                <span>Pattern</span>
+                <strong id="overlayPattern">Prime Run</strong>
+              </div>
+
+              <div class="overlay-pill">
+                <span>Pace</span>
+                <strong id="overlayPace">Steady</strong>
+              </div>
+
+              <div class="overlay-pill">
+                <span>Route</span>
+                <strong id="overlayRoute">Open</strong>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="primaryAction" class="primary" type="button">
+                Start Game
+              </button>
+              <button id="secondaryAction" class="secondary" type="button" hidden>
+                Secondary
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script defer src="script.js"></script>
+  </body>
+</html>
