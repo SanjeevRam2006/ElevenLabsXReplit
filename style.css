@@ -1,21 +1,21 @@
 /* SILENT MAZE */
 :root {
   color-scheme: dark;
-  --bg: #0f172a;
-  --bg-deep: #08101f;
-  --panel: rgba(9, 15, 30, 0.88);
-  --panel-strong: rgba(10, 18, 36, 0.96);
-  --line: rgba(124, 247, 255, 0.16);
-  --line-strong: rgba(124, 247, 255, 0.3);
+  --bg: #050816;
+  --bg-deep: #02040b;
+  --panel: rgba(8, 14, 28, 0.84);
+  --panel-strong: rgba(10, 16, 32, 0.94);
+  --line: rgba(148, 163, 184, 0.16);
+  --line-strong: rgba(148, 163, 184, 0.26);
   --text: #e2e8f0;
   --muted: #94a3b8;
-  --cyan: #67e8f9;
-  --cyan-soft: rgba(103, 232, 249, 0.2);
-  --green: #4ade80;
-  --blue: #60a5fa;
-  --amber: #fbbf24;
+  --cyan: #8be9ff;
+  --cyan-soft: rgba(139, 233, 255, 0.18);
+  --green: #6ee7b7;
+  --blue: #7dd3fc;
+  --amber: #facc15;
   --red: #fb7185;
-  --shadow: 0 20px 60px rgba(2, 6, 23, 0.55);
+  --shadow: 0 28px 80px rgba(2, 6, 23, 0.62);
   --radius-xl: 28px;
   --radius-lg: 20px;
   --radius-md: 16px;
@@ -42,10 +42,11 @@ body {
   font-family: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top, rgba(103, 232, 249, 0.18), transparent 30%),
-    radial-gradient(circle at 85% 15%, rgba(96, 165, 250, 0.12), transparent 24%),
-    radial-gradient(circle at 15% 85%, rgba(74, 222, 128, 0.1), transparent 22%),
-    linear-gradient(180deg, #0b1220 0%, var(--bg) 35%, var(--bg-deep) 100%);
+    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.16), transparent 28%),
+    radial-gradient(circle at 15% 18%, rgba(139, 233, 255, 0.08), transparent 22%),
+    radial-gradient(circle at 82% 22%, rgba(96, 165, 250, 0.1), transparent 20%),
+    radial-gradient(circle at 50% 78%, rgba(17, 24, 39, 0.22), transparent 30%),
+    linear-gradient(180deg, #03050c 0%, var(--bg) 42%, var(--bg-deep) 100%);
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-font-smoothing: antialiased;
@@ -58,11 +59,26 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 4px, 4px 100%;
+    radial-gradient(circle at 18px 20px, rgba(255, 255, 255, 0.95) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 120px 90px, rgba(255, 255, 255, 0.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 260px 160px, rgba(139, 233, 255, 0.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 74% 18%, rgba(255, 255, 255, 0.82) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 82% 68%, rgba(255, 255, 255, 0.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 56% 84%, rgba(139, 233, 255, 0.75) 0 1px, transparent 1.8px),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size:
+    220px 220px,
+    260px 260px,
+    320px 320px,
+    400px 400px,
+    420px 420px,
+    520px 520px,
+    100% 5px,
+    5px 100%;
   mix-blend-mode: screen;
-  opacity: 0.12;
+  opacity: 0.28;
+  animation: starDrift 160s linear infinite;
 }
 
 body::after {
@@ -70,7 +86,11 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, transparent 58%, rgba(2, 6, 23, 0.35) 100%);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(125, 211, 252, 0.12), transparent 18%),
+    radial-gradient(circle at 12% 72%, rgba(96, 165, 250, 0.08), transparent 18%),
+    radial-gradient(circle at 88% 72%, rgba(139, 233, 255, 0.08), transparent 18%),
+    radial-gradient(circle at center, transparent 55%, rgba(2, 6, 23, 0.72) 100%);
 }
 
 .app {
@@ -87,11 +107,11 @@ body::after {
   position: relative;
   z-index: 1;
   width: min(1240px, 100%);
-  min-height: calc(100dvh - clamp(24px, 4vw, 56px));
+  min-height: calc(100dvh - clamp(18px, 3vw, 40px));
   display: grid;
   align-content: center;
   justify-items: stretch;
-  gap: clamp(12px, 1.8vw, 18px);
+  gap: clamp(8px, 1.1vw, 10px);
   margin-inline: auto;
 }
 
@@ -101,9 +121,10 @@ body::after {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 25%, rgba(103, 232, 249, 0.08), transparent 26%),
-    radial-gradient(circle at 50% 75%, rgba(96, 165, 250, 0.07), transparent 30%);
-  filter: blur(24px);
+    radial-gradient(circle at 50% 20%, rgba(125, 211, 252, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 74%, rgba(96, 165, 250, 0.08), transparent 28%),
+    radial-gradient(circle at 50% 50%, rgba(8, 15, 30, 0.22), transparent 42%);
+  filter: blur(30px);
 }
 
 .hud,
@@ -119,13 +140,15 @@ body::after {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid rgba(124, 247, 255, 0.18);
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(10, 18, 36, 0.92), rgba(8, 14, 28, 0.78));
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
+  background:
+    linear-gradient(180deg, rgba(10, 16, 30, 0.9), rgba(5, 9, 18, 0.82)),
+    rgba(8, 12, 24, 0.88);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(18px);
 }
 
 .hud > * {
@@ -159,7 +182,7 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
 }
 
@@ -171,8 +194,9 @@ button:focus-visible {
   overflow: hidden;
   padding: 11px 15px;
   border-radius: 999px;
-  border: 1px solid rgba(124, 247, 255, 0.16);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.68));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    linear-gradient(180deg, rgba(16, 24, 40, 0.78), rgba(10, 16, 28, 0.64));
   color: var(--text);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -234,27 +258,27 @@ button:focus-visible {
 
 .controls-pill {
   justify-self: center;
-  border-color: rgba(74, 222, 128, 0.2);
-  background: linear-gradient(180deg, rgba(13, 24, 36, 0.92), rgba(10, 18, 28, 0.8));
+  border-color: rgba(125, 211, 252, 0.18);
+  background: linear-gradient(180deg, rgba(12, 20, 34, 0.9), rgba(8, 14, 24, 0.8));
 }
 
 .controls-pill span {
-  color: #86efac;
+  color: #93c5fd;
 }
 
 .controls-pill strong {
-  color: #d1fae5;
+  color: #dbeafe;
 }
 
 .speed-meter {
   justify-self: end;
-  width: min(280px, 100%);
+  width: min(260px, 100%);
   display: grid;
-  gap: 9px;
-  padding: 11px 13px;
+  gap: 7px;
+  padding: 10px 12px;
   border-radius: 18px;
-  border: 1px solid rgba(124, 247, 255, 0.18);
-  background: linear-gradient(180deg, rgba(10, 18, 36, 0.92), rgba(8, 14, 28, 0.8));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(10, 16, 30, 0.9), rgba(6, 10, 20, 0.82));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -274,10 +298,10 @@ button:focus-visible {
   height: 10px;
   border-radius: 999px;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.08)),
-    rgba(15, 23, 42, 0.88);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.06)),
+    rgba(8, 12, 22, 0.92);
   overflow: hidden;
-  border: 1px solid rgba(124, 247, 255, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .speed-meter .track::before {
@@ -295,27 +319,27 @@ button:focus-visible {
   inset: 0 auto 0 0;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), var(--cyan), var(--blue));
-  box-shadow: 0 0 18px rgba(103, 232, 249, 0.3);
+  background: linear-gradient(90deg, var(--blue), var(--cyan), #cbd5e1);
+  box-shadow: 0 0 18px rgba(125, 211, 252, 0.2);
   transition: width 120ms linear, filter 180ms ease;
 }
 
 .speed-meter .speed-fill.warn {
-  background: linear-gradient(90deg, var(--amber), var(--red));
+  background: linear-gradient(90deg, var(--amber), #fb7185);
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.28);
 }
 
 .panel {
   position: relative;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   border-radius: clamp(22px, 3vw, 34px);
-  padding: clamp(12px, 1.8vw, 20px);
+  padding: clamp(10px, 1.4vw, 16px);
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.65), rgba(8, 14, 28, 0.92)),
-    rgba(9, 15, 30, 0.82);
-  border: 1px solid rgba(124, 247, 255, 0.18);
-  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    linear-gradient(180deg, rgba(9, 14, 26, 0.62), rgba(4, 8, 16, 0.94)),
+    rgba(6, 10, 20, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 34px 90px rgba(2, 6, 23, 0.68), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
 }
 
@@ -330,44 +354,44 @@ button:focus-visible {
 
 .panel::before {
   background:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 100% 32px, 32px 100%;
-  opacity: 0.06;
+  opacity: 0.05;
 }
 
 .panel::after {
   background:
-    radial-gradient(circle at top left, rgba(103, 232, 249, 0.14), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.12), transparent 24%);
-  opacity: 0.9;
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.1), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.08), transparent 24%);
+  opacity: 0.8;
   mix-blend-mode: screen;
 }
 
 #gameCanvas {
   display: block;
   width: 100%;
-  height: clamp(380px, 58vh, 720px);
-  min-height: 380px;
+  height: clamp(340px, 54vh, 680px);
+  min-height: 340px;
   border-radius: calc(var(--radius-xl) - 8px);
   background:
-    radial-gradient(circle at center, rgba(103, 232, 249, 0.04), transparent 45%),
-    linear-gradient(180deg, rgba(4, 8, 18, 0.98), rgba(10, 18, 36, 0.96));
-  border: 1px solid rgba(124, 247, 255, 0.14);
+    radial-gradient(circle at center, rgba(125, 211, 252, 0.04), transparent 45%),
+    linear-gradient(180deg, rgba(2, 6, 12, 0.98), rgba(6, 10, 20, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.14);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 30px rgba(103, 232, 249, 0.05);
+    inset 0 0 30px rgba(125, 211, 252, 0.04);
   image-rendering: auto;
   touch-action: none;
   transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
 #gameCanvas:hover {
-  border-color: rgba(124, 247, 255, 0.22);
+  border-color: rgba(148, 163, 184, 0.22);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 34px rgba(103, 232, 249, 0.07),
-    0 0 0 1px rgba(103, 232, 249, 0.08);
+    inset 0 0 34px rgba(125, 211, 252, 0.06),
+    0 0 0 1px rgba(125, 211, 252, 0.08);
 }
 
 .overlay {
@@ -377,8 +401,8 @@ button:focus-visible {
   place-items: center;
   padding: clamp(16px, 4vw, 40px);
   background:
-    radial-gradient(circle at center, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.72));
-  backdrop-filter: blur(8px);
+    radial-gradient(circle at center, rgba(2, 6, 23, 0.12), rgba(2, 6, 23, 0.76));
+  backdrop-filter: blur(10px);
   opacity: 0;
   visibility: hidden;
   transform: scale(1.015);
@@ -396,10 +420,10 @@ button:focus-visible {
   width: min(100%, 520px);
   padding: clamp(24px, 4vw, 34px);
   border-radius: 28px;
-  border: 1px solid rgba(124, 247, 255, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   background:
-    linear-gradient(180deg, rgba(10, 18, 36, 0.96), rgba(8, 14, 28, 0.92));
-  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    linear-gradient(180deg, rgba(9, 14, 24, 0.96), rgba(5, 8, 16, 0.92));
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   text-align: center;
 }
 
@@ -413,7 +437,7 @@ button:focus-visible {
 
 .card h1 {
   font-size: clamp(2.4rem, 7vw, 4.6rem);
-  text-shadow: 0 0 18px rgba(103, 232, 249, 0.18);
+  text-shadow: 0 0 18px rgba(125, 211, 252, 0.14);
 }
 
 .card h2 {
@@ -445,8 +469,8 @@ button:focus-visible {
 .overlay-pill {
   padding: 12px 10px;
   border-radius: 16px;
-  border: 1px solid rgba(124, 247, 255, 0.14);
-  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(6, 10, 18, 0.72);
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -477,7 +501,7 @@ button.secondary {
   min-height: 48px;
   padding: 12px 18px;
   border-radius: 14px;
-  border: 1px solid rgba(124, 247, 255, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -490,14 +514,14 @@ button.secondary {
 .button.primary,
 button.primary {
   color: #f8fafc;
-  background: linear-gradient(180deg, rgba(103, 232, 249, 0.28), rgba(96, 165, 250, 0.22));
-  box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.22), 0 10px 30px rgba(103, 232, 249, 0.18);
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.24), rgba(96, 165, 250, 0.18));
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.18), 0 10px 30px rgba(125, 211, 252, 0.12);
 }
 
 .button.secondary,
 button.secondary {
   color: var(--text);
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(6, 10, 18, 0.82);
 }
 
 .button:hover,
@@ -512,11 +536,11 @@ button.secondary:focus-visible {
 
 .button.primary:hover,
 button.primary:hover {
-  box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.28), 0 16px 36px rgba(103, 232, 249, 0.24);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.24), 0 16px 36px rgba(125, 211, 252, 0.16);
 }
 
 .start-screen .card {
-  border-color: rgba(74, 222, 128, 0.16);
+  border-color: rgba(125, 211, 252, 0.16);
 }
 
 .gameover-screen .card {
@@ -524,16 +548,16 @@ button.primary:hover {
 }
 
 .win-screen .card {
-  border-color: rgba(96, 165, 250, 0.18);
+  border-color: rgba(125, 211, 252, 0.18);
 }
 
 .pause-screen .card {
-  border-color: rgba(244, 114, 182, 0.14);
+  border-color: rgba(148, 163, 184, 0.14);
 }
 
 .start-screen .primary {
-  background: linear-gradient(180deg, rgba(74, 222, 128, 0.28), rgba(34, 197, 94, 0.22));
-  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.2), 0 10px 30px rgba(74, 222, 128, 0.16);
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.26), rgba(96, 165, 250, 0.2));
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), 0 10px 30px rgba(125, 211, 252, 0.14);
 }
 
 .gameover-screen .primary {
@@ -542,8 +566,8 @@ button.primary:hover {
 }
 
 .win-screen .primary {
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.28), rgba(59, 130, 246, 0.22));
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2), 0 10px 30px rgba(96, 165, 250, 0.16);
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.28), rgba(59, 130, 246, 0.22));
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), 0 10px 30px rgba(125, 211, 252, 0.14);
 }
 
 .overlay.show .card {
@@ -552,8 +576,8 @@ button.primary:hover {
 
 .button.secondary:hover,
 button.secondary:hover {
-  border-color: rgba(124, 247, 255, 0.34);
-  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(7, 11, 20, 0.92);
 }
 
 .hint,
@@ -575,7 +599,7 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   padding: 0 6px 4px;
 }
 
@@ -633,7 +657,7 @@ button.secondary:hover {
 }
 
 .glow {
-  filter: drop-shadow(0 0 14px rgba(103, 232, 249, 0.38));
+  filter: drop-shadow(0 0 14px rgba(125, 211, 252, 0.28));
 }
 
 .controls-pill {
@@ -646,7 +670,7 @@ canvas {
 }
 
 ::selection {
-  background: rgba(103, 232, 249, 0.25);
+  background: rgba(125, 211, 252, 0.22);
   color: #fff;
 }
 
@@ -687,6 +711,7 @@ canvas {
   .hud {
     grid-template-columns: 1fr;
     justify-items: center;
+    gap: 8px;
   }
 
   .controls-pill {
@@ -706,18 +731,18 @@ canvas {
 
 @media (max-width: 700px) {
   .app {
-    padding: 10px;
+    padding: 8px;
   }
 
   .stage {
-    min-height: calc(100dvh - 20px);
+    min-height: calc(100dvh - 16px);
     align-content: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .hud {
-    padding: 12px;
-    gap: 11px;
+    padding: 10px;
+    gap: 8px;
   }
 
   .hud .stats {
@@ -733,8 +758,8 @@ canvas {
   }
 
   #gameCanvas {
-    height: clamp(320px, 50svh, 560px);
-    min-height: 320px;
+    height: clamp(300px, 48svh, 520px);
+    min-height: 300px;
     border-radius: 20px;
   }
 
@@ -751,6 +776,7 @@ canvas {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    gap: 8px;
   }
 
   .shortcut-list {
@@ -775,5 +801,17 @@ canvas {
 
   .card h1 {
     font-size: clamp(2rem, 12vw, 3.2rem);
+  }
+}
+
+@keyframes starDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-12px, 18px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }

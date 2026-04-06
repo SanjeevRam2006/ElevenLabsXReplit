@@ -355,6 +355,7 @@ class AudioManager {
     this.voiceOscillator.start();
     this.voiceUpperOscillator.start();
     this.warningOscillator.start();
+    this.nextAccentAt = performance.now() + 140;
 
     await this.context.resume();
     this.ready = true;
@@ -415,7 +416,7 @@ class AudioManager {
     const now = this.context.currentTime;
     this.voiceGain.gain.setTargetAtTime(0.0001, now, 0.08);
     this.warningGain.gain.setTargetAtTime(0.0001, now, 0.05);
-    this.nextAccentAt = 0;
+    this.nextAccentAt = performance.now() + 120;
   }
 
   playMoveAccent(speedRatio, isSafeMotion) {
@@ -427,36 +428,85 @@ class AudioManager {
     const accentGain = this.context.createGain();
     const accentFilter = this.context.createBiquadFilter();
     const accentOscillator = this.context.createOscillator();
-    const baseFrequency = 230 + Math.random() * 420 + speedRatio * 170;
-    const endFrequency = Math.max(
-      80,
-      baseFrequency * (0.82 + Math.random() * 0.75)
-    );
-    const duration = 0.045 + Math.random() * 0.07;
-    const volume = (isSafeMotion ? 0.014 : 0.01) + Math.random() * 0.015;
-
-    accentOscillator.type = chooseRandom(["triangle", "square", "sine"]);
-    accentOscillator.frequency.setValueAtTime(baseFrequency, now);
-    accentOscillator.frequency.exponentialRampToValueAtTime(
-      endFrequency,
-      now + duration * 0.9
-    );
-    accentOscillator.detune.setValueAtTime((Math.random() - 0.5) * 260, now);
-
-    accentFilter.type = chooseRandom(["bandpass", "highpass"]);
-    accentFilter.Q.value = 3 + Math.random() * 8;
-    accentFilter.frequency.setValueAtTime(900 + Math.random() * 1700, now);
+    const accentStyle = Math.floor(Math.random() * 4);
+    const baseFrequency = 210 + Math.random() * 460 + speedRatio * 180;
+    const duration = 0.05 + Math.random() * 0.09;
+    const volume = (isSafeMotion ? 0.02 : 0.014) + Math.random() * 0.018;
 
     accentGain.gain.setValueAtTime(0.0001, now);
     accentGain.gain.linearRampToValueAtTime(volume, now + 0.008);
     accentGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
+    if (accentStyle === 0) {
+      accentOscillator.type = "square";
+      accentOscillator.frequency.setValueAtTime(baseFrequency, now);
+      accentOscillator.frequency.exponentialRampToValueAtTime(
+        Math.max(110, baseFrequency * 0.52),
+        now + duration * 0.88
+      );
+      accentFilter.type = "bandpass";
+      accentFilter.Q.value = 10 + Math.random() * 6;
+      accentFilter.frequency.setValueAtTime(760 + Math.random() * 420, now);
+    } else if (accentStyle === 1) {
+      accentOscillator.type = "triangle";
+      accentOscillator.frequency.setValueAtTime(baseFrequency * 0.94, now);
+      accentOscillator.frequency.exponentialRampToValueAtTime(
+        baseFrequency * (1.18 + Math.random() * 0.2),
+        now + duration * 0.82
+      );
+      accentFilter.type = "lowpass";
+      accentFilter.Q.value = 2.4 + Math.random() * 1.6;
+      accentFilter.frequency.setValueAtTime(1180 + Math.random() * 720, now);
+    } else if (accentStyle === 2) {
+      accentOscillator.type = "sine";
+      accentOscillator.frequency.setValueAtTime(baseFrequency * 0.78, now);
+      accentOscillator.frequency.exponentialRampToValueAtTime(
+        Math.max(120, baseFrequency * 1.34),
+        now + duration * 0.72
+      );
+      accentFilter.type = "bandpass";
+      accentFilter.Q.value = 14 + Math.random() * 4;
+      accentFilter.frequency.setValueAtTime(1280 + Math.random() * 900, now);
+    } else {
+      accentOscillator.type = "sawtooth";
+      accentOscillator.frequency.setValueAtTime(baseFrequency * 1.1, now);
+      accentOscillator.frequency.exponentialRampToValueAtTime(
+        Math.max(90, baseFrequency * 0.68),
+        now + duration * 0.95
+      );
+      accentFilter.type = "highpass";
+      accentFilter.Q.value = 1.8 + Math.random() * 2.8;
+      accentFilter.frequency.setValueAtTime(520 + Math.random() * 420, now);
+    }
+
+    accentOscillator.detune.setValueAtTime((Math.random() - 0.5) * 320, now);
     accentOscillator.connect(accentFilter);
     accentFilter.connect(accentGain);
     accentGain.connect(this.masterGain);
-
     accentOscillator.start(now);
     accentOscillator.stop(now + duration + 0.03);
+
+    if (Math.random() < 0.34) {
+      const echoOscillator = this.context.createOscillator();
+      const echoGain = this.context.createGain();
+      const echoStart = now + duration * (0.28 + Math.random() * 0.16);
+      const echoDuration = duration * (0.75 + Math.random() * 0.35);
+
+      echoOscillator.type = chooseRandom(["triangle", "sine"]);
+      echoOscillator.frequency.setValueAtTime(baseFrequency * (0.62 + Math.random() * 0.28), echoStart);
+      echoOscillator.frequency.exponentialRampToValueAtTime(
+        Math.max(80, baseFrequency * (1.02 + Math.random() * 0.26)),
+        echoStart + echoDuration * 0.86
+      );
+      echoGain.gain.setValueAtTime(0.0001, echoStart);
+      echoGain.gain.linearRampToValueAtTime(volume * 0.42, echoStart + 0.008);
+      echoGain.gain.exponentialRampToValueAtTime(0.0001, echoStart + echoDuration);
+
+      echoOscillator.connect(echoGain);
+      echoGain.connect(this.masterGain);
+      echoOscillator.start(echoStart);
+      echoOscillator.stop(echoStart + echoDuration + 0.03);
+    }
   }
 
   playBuzzer() {
@@ -880,34 +930,105 @@ class Game {
     const palette = this.levelProfile.palette;
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, palette.backdropA);
-    gradient.addColorStop(0.55, palette.backdropB);
-    gradient.addColorStop(1, palette.backdropA);
+    gradient.addColorStop(0.45, palette.backdropB);
+    gradient.addColorStop(1, "#01040b");
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    ctx.save();
-    ctx.globalAlpha = 0.12;
-    ctx.strokeStyle = palette.grid;
-    ctx.lineWidth = 1;
-    const spacing = 32;
+    const nebulaA = ctx.createRadialGradient(
+      width * 0.18,
+      height * 0.22,
+      0,
+      width * 0.18,
+      height * 0.22,
+      width * 0.42
+    );
+    nebulaA.addColorStop(0, `${palette.wallA.replace("0.84", "0.14")}`);
+    nebulaA.addColorStop(0.55, `${palette.wallB.replace("0.76", "0.09")}`);
+    nebulaA.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = nebulaA;
+    ctx.fillRect(0, 0, width, height);
 
-    for (let x = 0; x < width + spacing; x += spacing) {
+    const nebulaB = ctx.createRadialGradient(
+      width * 0.82,
+      height * 0.78,
+      0,
+      width * 0.82,
+      height * 0.78,
+      width * 0.36
+    );
+    nebulaB.addColorStop(0, `${palette.wallC.replace("0.84", "0.12").replace("0.86", "0.12")}`);
+    nebulaB.addColorStop(0.58, `${palette.wallB.replace("0.76", "0.07")}`);
+    nebulaB.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = nebulaB;
+    ctx.fillRect(0, 0, width, height);
+
+    const starCount = Math.max(90, Math.floor((width * height) / 3600));
+    ctx.save();
+    for (let index = 0; index < starCount; index += 1) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const radius = Math.random() < 0.82 ? Math.random() * 1.4 + 0.2 : Math.random() * 2.2 + 0.8;
+      const alpha = 0.18 + Math.random() * 0.68;
+      const tint = Math.random();
+
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
+      ctx.fillStyle =
+        tint < 0.16
+          ? `rgba(191, 219, 254, ${alpha})`
+          : tint < 0.3
+          ? `rgba(253, 224, 71, ${alpha * 0.82})`
+          : `rgba(255, 255, 255, ${alpha})`;
+      ctx.shadowBlur = radius < 1.2 ? 0 : 10 + Math.random() * 10;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const streakCount = Math.max(12, Math.floor(width / 90));
+    ctx.save();
+    ctx.lineCap = "round";
+    for (let index = 0; index < streakCount; index += 1) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const length = 18 + Math.random() * 64;
+      const angle = -0.32 + Math.random() * 0.12;
+      const stroke = 0.5 + Math.random() * 1.2;
+      const gradientStroke = ctx.createLinearGradient(
+        x,
+        y,
+        x + Math.cos(angle) * length,
+        y + Math.sin(angle) * length
+      );
+
+      gradientStroke.addColorStop(0, "rgba(255, 255, 255, 0)");
+      gradientStroke.addColorStop(0.5, "rgba(255, 255, 255, 0.18)");
+      gradientStroke.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.strokeStyle = gradientStroke;
+      ctx.lineWidth = stroke;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
       ctx.stroke();
     }
-
     ctx.restore();
 
-    ctx.save();
-    ctx.fillStyle = "rgba(15, 23, 42, 0.22)";
-    for (let y = 0; y < height; y += 4) {
-      ctx.fillRect(0, y, width, 1);
-    }
-    ctx.restore();
+    const vignette = ctx.createRadialGradient(
+      width * 0.5,
+      height * 0.5,
+      Math.min(width, height) * 0.12,
+      width * 0.5,
+      height * 0.5,
+      Math.max(width, height) * 0.72
+    );
+    vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+    vignette.addColorStop(0.7, "rgba(2, 6, 23, 0.16)");
+    vignette.addColorStop(1, "rgba(2, 6, 23, 0.46)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
   }
 
   buildMazeCache() {
