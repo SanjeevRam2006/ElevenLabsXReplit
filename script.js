@@ -1,67 +1,63 @@
-const STORAGE_KEY = "silent-maze-best-times-v1";
-const PATTERN_PREFIXES = [
-  "Prime",
-  "Ghost",
-  "Vector",
-  "Echo",
-  "Helix",
-  "Pulse",
-  "Cipher",
-  "Null",
-];
-const PATTERN_SUFFIXES = [
-  "Run",
-  "Shift",
-  "Lattice",
-  "Circuit",
-  "Spiral",
-  "Drift",
-  "Maze",
-  "Vault",
-];
-const CHALLENGE_LABELS = ["Steady", "Focused", "Sharp", "Hot"];
-const HANDLING_LABELS = ["Soft", "Balanced", "Tight"];
-const ROUTE_LABELS = ["Linear", "Forked", "Weaving", "Dense"];
-const LEVEL_PALETTES = [
+﻿const STORAGE_KEY = "void-maze-sector-record-v4";
+const TAU = Math.PI * 2;
+const FOV = Math.PI / 3;
+const MAX_VIEW_DISTANCE = 24;
+const PLAYER_RADIUS = 0.2;
+const TURRET_RADIUS = 0.28;
+const EMITTER_RADIUS = 0.2;
+const MOVE_SPEED = 2.7;
+const CREEP_SPEED = 1.35;
+const TURN_SPEED = 2.35;
+const PLAYER_COOLDOWN = 0.26;
+const PLAYER_HULL = 100;
+
+const SECTOR_PREFIXES = ["Null", "Outer", "Cold", "Silent", "Glass", "Drift"];
+const SECTOR_SUFFIXES = ["Array", "Vault", "Passage", "Spine", "Lattice", "Corridor"];
+const PALETTES = [
   {
-    wallA: "rgba(56, 189, 248, 0.84)",
-    wallB: "rgba(99, 102, 241, 0.76)",
-    wallC: "rgba(34, 211, 238, 0.86)",
-    player: "#f97316",
-    trail: "#fb923c",
-    backdropA: "#020617",
-    backdropB: "#081225",
-    grid: "rgba(56, 189, 248, 0.12)",
+    code: "DRIFT-01",
+    wallHue: 205,
+    skyTop: "#02060d",
+    skyBottom: "#0e1a28",
+    floorTop: "#070a11",
+    floorBottom: "#10131a",
+    playerBeam: "#d8fbff",
+    playerGlow: "rgba(216, 251, 255, 0.9)",
+    alertBeam: "#ff9577",
+    alertGlow: "rgba(255, 149, 119, 0.88)",
+    gate: "#8fffe1",
+    gateClosed: "#ffb18f",
+    accent: "#b9d9ff",
   },
   {
-    wallA: "rgba(244, 114, 182, 0.84)",
-    wallB: "rgba(168, 85, 247, 0.76)",
-    wallC: "rgba(236, 72, 153, 0.84)",
-    player: "#22d3ee",
-    trail: "#67e8f9",
-    backdropA: "#050816",
-    backdropB: "#140b1f",
-    grid: "rgba(236, 72, 153, 0.12)",
+    code: "SIGNAL-04",
+    wallHue: 192,
+    skyTop: "#03080c",
+    skyBottom: "#0d1c1f",
+    floorTop: "#06090a",
+    floorBottom: "#111518",
+    playerBeam: "#d1fff1",
+    playerGlow: "rgba(209, 255, 241, 0.9)",
+    alertBeam: "#ffb084",
+    alertGlow: "rgba(255, 176, 132, 0.86)",
+    gate: "#8fe9ff",
+    gateClosed: "#ffb895",
+    accent: "#d7fff6",
   },
   {
-    wallA: "rgba(250, 204, 21, 0.84)",
-    wallB: "rgba(249, 115, 22, 0.76)",
-    wallC: "rgba(251, 146, 60, 0.84)",
-    player: "#38bdf8",
-    trail: "#7dd3fc",
-    backdropA: "#080b17",
-    backdropB: "#1c1205",
-    grid: "rgba(250, 204, 21, 0.12)",
-  },
-  {
-    wallA: "rgba(52, 211, 153, 0.84)",
-    wallB: "rgba(45, 212, 191, 0.76)",
-    wallC: "rgba(16, 185, 129, 0.86)",
-    player: "#f59e0b",
-    trail: "#fbbf24",
-    backdropA: "#04110f",
-    backdropB: "#05151c",
-    grid: "rgba(52, 211, 153, 0.12)",
+    code: "ASH-09",
+    wallHue: 218,
+    skyTop: "#03060b",
+    skyBottom: "#141a25",
+    floorTop: "#07080d",
+    floorBottom: "#15161a",
+    playerBeam: "#edf2ff",
+    playerGlow: "rgba(237, 242, 255, 0.9)",
+    alertBeam: "#ffa081",
+    alertGlow: "rgba(255, 160, 129, 0.88)",
+    gate: "#a2ffd7",
+    gateClosed: "#ffaf8e",
+    accent: "#dfe7ff",
   },
 ];
 
@@ -73,8 +69,8 @@ function lerp(start, end, amount) {
   return start + (end - start) * amount;
 }
 
-function toOdd(value) {
-  return value % 2 === 0 ? value - 1 : value;
+function chooseRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 function shuffle(array) {
@@ -85,76 +81,79 @@ function shuffle(array) {
   return array;
 }
 
-function chooseRandom(list, rng = Math.random) {
-  return list[Math.floor(rng() * list.length)];
+function toOdd(value) {
+  return value % 2 === 0 ? value - 1 : value;
 }
 
-function randomOddBetween(min, max, rng = Math.random) {
+function randomOddBetween(min, max) {
   const values = [];
   for (let value = min; value <= max; value += 1) {
     if (value % 2 === 1) {
       values.push(value);
     }
   }
-  return chooseRandom(values, rng);
+  return chooseRandom(values);
+}
+
+function normalizeAngle(angle) {
+  let value = angle % TAU;
+  if (value < 0) value += TAU;
+  return value;
+}
+
+function shortestAngle(from, to) {
+  let delta = (to - from + Math.PI) % TAU;
+  if (delta < 0) delta += TAU;
+  return delta - Math.PI;
+}
+
+function distanceToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    return Math.hypot(px - ax, py - ay);
+  }
+  const t = clamp(((px - ax) * dx + (py - ay) * dy) / lengthSquared, 0, 1);
+  const closestX = ax + dx * t;
+  const closestY = ay + dy * t;
+  return Math.hypot(px - closestX, py - closestY);
 }
 
 function formatTime(milliseconds) {
-  if (!Number.isFinite(milliseconds)) {
-    return "--";
-  }
-
+  if (!Number.isFinite(milliseconds)) return "--";
   const totalSeconds = milliseconds / 1000;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = Math.floor(totalSeconds % 60);
   const millis = Math.floor(milliseconds % 1000);
-
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-    2,
-    "0"
-  )}.${String(millis).padStart(3, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
-function pickStartCell(columns, rows, rng = Math.random) {
-  const side = Math.floor(rng() * 4);
-
-  if (side === 0) {
-    return { col: 1, row: randomOddBetween(1, rows - 2, rng), side: "west" };
-  }
-  if (side === 1) {
-    return {
-      col: columns - 2,
-      row: randomOddBetween(1, rows - 2, rng),
-      side: "east",
-    };
-  }
-  if (side === 2) {
-    return { col: randomOddBetween(1, columns - 2, rng), row: 1, side: "north" };
-  }
-
-  return {
-    col: randomOddBetween(1, columns - 2, rng),
-    row: rows - 2,
-    side: "south",
-  };
+function formatSector(level) {
+  return String(level).padStart(2, "0");
 }
 
-function findFarthestCell(grid, start) {
+function pickStartCell(columns, rows) {
+  const side = Math.floor(Math.random() * 4);
+  if (side === 0) return { col: 1, row: randomOddBetween(1, rows - 2) };
+  if (side === 1) return { col: columns - 2, row: randomOddBetween(1, rows - 2) };
+  if (side === 2) return { col: randomOddBetween(1, columns - 2), row: 1 };
+  return { col: randomOddBetween(1, columns - 2), row: rows - 2 };
+}
+
+function farthestCell(grid, start) {
   const rows = grid.length;
   const columns = grid[0].length;
-  const visited = Array.from({ length: rows }, () => Array(columns).fill(false));
+  const seen = Array.from({ length: rows }, () => Array(columns).fill(false));
   const queue = [{ col: start.col, row: start.row, distance: 0 }];
-  visited[start.row][start.col] = true;
   let head = 0;
-  let farthest = { col: start.col, row: start.row, distance: 0 };
+  let best = queue[0];
+  seen[start.row][start.col] = true;
 
   while (head < queue.length) {
     const current = queue[head];
     head += 1;
-
-    if (current.distance > farthest.distance) {
-      farthest = current;
-    }
+    if (current.distance > best.distance) best = current;
 
     const neighbors = [
       { col: current.col + 1, row: current.row },
@@ -169,35 +168,27 @@ function findFarthestCell(grid, start) {
         next.col >= columns - 1 ||
         next.row <= 0 ||
         next.row >= rows - 1 ||
-        visited[next.row][next.col] ||
+        seen[next.row][next.col] ||
         grid[next.row][next.col] === 1
       ) {
         continue;
       }
-
-      visited[next.row][next.col] = true;
-      queue.push({
-        col: next.col,
-        row: next.row,
-        distance: current.distance + 1,
-      });
+      seen[next.row][next.col] = true;
+      queue.push({ col: next.col, row: next.row, distance: current.distance + 1 });
     }
   }
 
-  return farthest;
+  return best;
 }
 
-function openMazeLoops(grid, openings, rng = Math.random) {
+function openLoops(grid, openings) {
   const rows = grid.length;
   const columns = grid[0].length;
   const candidates = [];
 
   for (let row = 1; row < rows - 1; row += 1) {
     for (let col = 1; col < columns - 1; col += 1) {
-      if (grid[row][col] === 0) {
-        continue;
-      }
-
+      if (grid[row][col] === 0) continue;
       const horizontal =
         grid[row][col - 1] === 0 &&
         grid[row][col + 1] === 0 &&
@@ -208,38 +199,25 @@ function openMazeLoops(grid, openings, rng = Math.random) {
         grid[row + 1][col] === 0 &&
         grid[row][col - 1] === 1 &&
         grid[row][col + 1] === 1;
-
-      if (horizontal || vertical) {
-        candidates.push({ col, row });
-      }
+      if (horizontal || vertical) candidates.push({ col, row });
     }
   }
 
-  shuffle(candidates);
-  for (let index = 0; index < Math.min(openings, candidates.length); index += 1) {
-    const candidate = candidates[index];
-    grid[candidate.row][candidate.col] = 0;
+  for (const cell of shuffle(candidates).slice(0, openings)) {
+    grid[cell.row][cell.col] = 0;
   }
 }
 
-function generateMaze(columns, rows, profile, rng = Math.random) {
+function generateMaze(columns, rows, loopOpenings) {
   const grid = Array.from({ length: rows }, () => Array(columns).fill(1));
-  const directions = [
-    [0, -2],
-    [2, 0],
-    [0, 2],
-    [-2, 0],
-  ];
-  const start = pickStartCell(columns, rows, rng);
+  const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+  const start = pickStartCell(columns, rows);
 
   function carve(x, y) {
     grid[y][x] = 0;
-    shuffle(directions);
-
-    for (const [dx, dy] of directions) {
+    for (const [dx, dy] of shuffle(directions)) {
       const nextX = x + dx;
       const nextY = y + dy;
-
       if (
         nextX <= 0 ||
         nextX >= columns - 1 ||
@@ -249,388 +227,145 @@ function generateMaze(columns, rows, profile, rng = Math.random) {
       ) {
         continue;
       }
-
       grid[y + dy / 2][x + dx / 2] = 0;
       carve(nextX, nextY);
     }
   }
 
   carve(start.col, start.row);
-  openMazeLoops(grid, profile.loopOpenings, rng);
-  const farthest = findFarthestCell(grid, start);
-  const exit = { col: farthest.col, row: farthest.row };
-
-  grid[start.row][start.col] = 0;
-  grid[exit.row][exit.col] = 0;
-
-  return {
-    grid,
-    columns,
-    rows,
-    start,
-    exit,
-  };
+  openLoops(grid, loopOpenings);
+  const exit = farthestCell(grid, start);
+  return { grid, columns, rows, start, exit: { col: exit.col, row: exit.row } };
 }
 
 class AudioManager {
   constructor() {
     this.context = null;
-    this.masterGain = null;
-    this.voiceGain = null;
-    this.warningGain = null;
-    this.voiceBaseGain = null;
-    this.voiceUpperGain = null;
-    this.voiceFormantA = null;
-    this.voiceFormantB = null;
-    this.voiceOscillator = null;
-    this.voiceUpperOscillator = null;
-    this.warningOscillator = null;
-    this.nextAccentAt = 0;
+    this.master = null;
     this.ready = false;
   }
 
   async unlock() {
     if (this.ready) {
-      if (this.context.state === "suspended") {
-        await this.context.resume();
-      }
+      if (this.context.state === "suspended") await this.context.resume();
       return;
     }
-
     const AudioCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtor) {
-      return;
-    }
-
+    if (!AudioCtor) return;
     this.context = new AudioCtor();
-    this.masterGain = this.context.createGain();
-    this.masterGain.gain.value = 0.35;
-    this.masterGain.connect(this.context.destination);
-
-    this.voiceGain = this.context.createGain();
-    this.voiceGain.gain.value = 0.0001;
-    this.voiceGain.connect(this.masterGain);
-
-    this.voiceBaseGain = this.context.createGain();
-    this.voiceBaseGain.gain.value = 0.55;
-    this.voiceUpperGain = this.context.createGain();
-    this.voiceUpperGain.gain.value = 0.22;
-
-    this.voiceFormantA = this.context.createBiquadFilter();
-    this.voiceFormantA.type = "bandpass";
-    this.voiceFormantA.Q.value = 8;
-    this.voiceFormantA.frequency.value = 740;
-
-    this.voiceFormantB = this.context.createBiquadFilter();
-    this.voiceFormantB.type = "bandpass";
-    this.voiceFormantB.Q.value = 11;
-    this.voiceFormantB.frequency.value = 1280;
-
-    this.voiceOscillator = this.context.createOscillator();
-    this.voiceOscillator.type = "sawtooth";
-    this.voiceOscillator.frequency.value = 155;
-
-    this.voiceUpperOscillator = this.context.createOscillator();
-    this.voiceUpperOscillator.type = "triangle";
-    this.voiceUpperOscillator.frequency.value = 232;
-
-    this.warningGain = this.context.createGain();
-    this.warningGain.gain.value = 0.0001;
-    this.warningGain.connect(this.masterGain);
-
-    this.warningOscillator = this.context.createOscillator();
-    this.warningOscillator.type = "sawtooth";
-    this.warningOscillator.frequency.value = 220;
-    this.warningOscillator.connect(this.warningGain);
-
-    this.voiceOscillator.connect(this.voiceBaseGain);
-    this.voiceUpperOscillator.connect(this.voiceUpperGain);
-    this.voiceBaseGain.connect(this.voiceFormantA);
-    this.voiceBaseGain.connect(this.voiceFormantB);
-    this.voiceUpperGain.connect(this.voiceFormantA);
-    this.voiceUpperGain.connect(this.voiceFormantB);
-    this.voiceFormantA.connect(this.voiceGain);
-    this.voiceFormantB.connect(this.voiceGain);
-
-    this.voiceOscillator.start();
-    this.voiceUpperOscillator.start();
-    this.warningOscillator.start();
-    this.nextAccentAt = performance.now() + 140;
-
+    this.master = this.context.createGain();
+    this.master.gain.value = 0.24;
+    this.master.connect(this.context.destination);
     await this.context.resume();
     this.ready = true;
   }
 
-  updateMotion(speedRatio, isSafeMotion) {
-    if (!this.ready) {
-      return;
-    }
-
+  pulse({ type = "sine", frequency = 440, endFrequency = null, duration = 0.12, gain = 0.03, filterFrequency = 1600 }) {
+    if (!this.ready) return;
     const now = this.context.currentTime;
-    const wallTime = performance.now();
-    const motionRatio = clamp(speedRatio, 0, 1.35);
-    const voiceTarget = isSafeMotion ? 0.016 + motionRatio * 0.04 : 0.0001;
-    const warningTarget =
-      isSafeMotion && motionRatio > 0.35
-        ? clamp((motionRatio - 0.35) * 0.085, 0, 0.07)
-        : 0.0001;
-    const time = wallTime * 0.001;
-    const wobble = Math.sin(time * (4.5 + motionRatio * 5.5));
-    const chatter = Math.sin(time * (8 + motionRatio * 11) + motionRatio * 2.5);
-    const basePitch = 145 + motionRatio * 60 + wobble * 12 + chatter * 5;
-    const upperPitch = basePitch * (1.48 + motionRatio * 0.12);
-    const vowelBlend = (Math.sin(time * (2.6 + motionRatio * 2.4)) + 1) * 0.5;
-    const formantA = lerp(520, 930, vowelBlend) + chatter * 35;
-    const formantB = lerp(1180, 2160, 1 - vowelBlend) + wobble * 55;
-
-    this.voiceGain.gain.setTargetAtTime(voiceTarget, now, 0.06);
-    this.warningGain.gain.setTargetAtTime(warningTarget, now, 0.05);
-    this.voiceBaseGain.gain.setTargetAtTime(0.48 + motionRatio * 0.08, now, 0.08);
-    this.voiceUpperGain.gain.setTargetAtTime(
-      0.16 + motionRatio * 0.06 + Math.max(0, chatter) * 0.05,
-      now,
-      0.08
-    );
-    this.voiceOscillator.frequency.setTargetAtTime(basePitch, now, 0.035);
-    this.voiceUpperOscillator.frequency.setTargetAtTime(upperPitch, now, 0.035);
-    this.voiceFormantA.frequency.setTargetAtTime(formantA, now, 0.04);
-    this.voiceFormantB.frequency.setTargetAtTime(formantB, now, 0.04);
-    this.warningOscillator.frequency.setTargetAtTime(
-      210 + motionRatio * 900,
-      now,
-      0.04
-    );
-
-    if (motionRatio > 0.08 && wallTime >= this.nextAccentAt) {
-      this.playMoveAccent(motionRatio, isSafeMotion);
-      this.nextAccentAt =
-        wallTime + lerp(240, 110, clamp(motionRatio, 0, 1)) + Math.random() * 140;
+    const oscillator = this.context.createOscillator();
+    const filter = this.context.createBiquadFilter();
+    const envelope = this.context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    if (endFrequency !== null) {
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, endFrequency), now + duration);
     }
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(filterFrequency, now);
+    envelope.gain.setValueAtTime(0.0001, now);
+    envelope.gain.linearRampToValueAtTime(gain, now + 0.01);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    oscillator.connect(filter);
+    filter.connect(envelope);
+    envelope.connect(this.master);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.02);
   }
 
-  quiet() {
-    if (!this.ready) {
-      return;
-    }
-
-    const now = this.context.currentTime;
-    this.voiceGain.gain.setTargetAtTime(0.0001, now, 0.08);
-    this.warningGain.gain.setTargetAtTime(0.0001, now, 0.05);
-    this.nextAccentAt = performance.now() + 120;
-  }
-
-  playMoveAccent(speedRatio, isSafeMotion) {
-    if (!this.ready) {
-      return;
-    }
-
-    const now = this.context.currentTime;
-    const accentGain = this.context.createGain();
-    const accentFilter = this.context.createBiquadFilter();
-    const accentOscillator = this.context.createOscillator();
-    const accentStyle = Math.floor(Math.random() * 4);
-    const baseFrequency = 210 + Math.random() * 460 + speedRatio * 180;
-    const duration = 0.05 + Math.random() * 0.09;
-    const volume = (isSafeMotion ? 0.02 : 0.014) + Math.random() * 0.018;
-
-    accentGain.gain.setValueAtTime(0.0001, now);
-    accentGain.gain.linearRampToValueAtTime(volume, now + 0.008);
-    accentGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    if (accentStyle === 0) {
-      accentOscillator.type = "square";
-      accentOscillator.frequency.setValueAtTime(baseFrequency, now);
-      accentOscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(110, baseFrequency * 0.52),
-        now + duration * 0.88
-      );
-      accentFilter.type = "bandpass";
-      accentFilter.Q.value = 10 + Math.random() * 6;
-      accentFilter.frequency.setValueAtTime(760 + Math.random() * 420, now);
-    } else if (accentStyle === 1) {
-      accentOscillator.type = "triangle";
-      accentOscillator.frequency.setValueAtTime(baseFrequency * 0.94, now);
-      accentOscillator.frequency.exponentialRampToValueAtTime(
-        baseFrequency * (1.18 + Math.random() * 0.2),
-        now + duration * 0.82
-      );
-      accentFilter.type = "lowpass";
-      accentFilter.Q.value = 2.4 + Math.random() * 1.6;
-      accentFilter.frequency.setValueAtTime(1180 + Math.random() * 720, now);
-    } else if (accentStyle === 2) {
-      accentOscillator.type = "sine";
-      accentOscillator.frequency.setValueAtTime(baseFrequency * 0.78, now);
-      accentOscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(120, baseFrequency * 1.34),
-        now + duration * 0.72
-      );
-      accentFilter.type = "bandpass";
-      accentFilter.Q.value = 14 + Math.random() * 4;
-      accentFilter.frequency.setValueAtTime(1280 + Math.random() * 900, now);
-    } else {
-      accentOscillator.type = "sawtooth";
-      accentOscillator.frequency.setValueAtTime(baseFrequency * 1.1, now);
-      accentOscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(90, baseFrequency * 0.68),
-        now + duration * 0.95
-      );
-      accentFilter.type = "highpass";
-      accentFilter.Q.value = 1.8 + Math.random() * 2.8;
-      accentFilter.frequency.setValueAtTime(520 + Math.random() * 420, now);
-    }
-
-    accentOscillator.detune.setValueAtTime((Math.random() - 0.5) * 320, now);
-    accentOscillator.connect(accentFilter);
-    accentFilter.connect(accentGain);
-    accentGain.connect(this.masterGain);
-    accentOscillator.start(now);
-    accentOscillator.stop(now + duration + 0.03);
-
-    if (Math.random() < 0.34) {
-      const echoOscillator = this.context.createOscillator();
-      const echoGain = this.context.createGain();
-      const echoStart = now + duration * (0.28 + Math.random() * 0.16);
-      const echoDuration = duration * (0.75 + Math.random() * 0.35);
-
-      echoOscillator.type = chooseRandom(["triangle", "sine"]);
-      echoOscillator.frequency.setValueAtTime(baseFrequency * (0.62 + Math.random() * 0.28), echoStart);
-      echoOscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(80, baseFrequency * (1.02 + Math.random() * 0.26)),
-        echoStart + echoDuration * 0.86
-      );
-      echoGain.gain.setValueAtTime(0.0001, echoStart);
-      echoGain.gain.linearRampToValueAtTime(volume * 0.42, echoStart + 0.008);
-      echoGain.gain.exponentialRampToValueAtTime(0.0001, echoStart + echoDuration);
-
-      echoOscillator.connect(echoGain);
-      echoGain.connect(this.masterGain);
-      echoOscillator.start(echoStart);
-      echoOscillator.stop(echoStart + echoDuration + 0.03);
-    }
-  }
-
-  playBuzzer() {
-    if (!this.ready) {
-      return;
-    }
-
-    const now = this.context.currentTime;
-    const buzzerGain = this.context.createGain();
-    buzzerGain.gain.setValueAtTime(0.0001, now);
-    buzzerGain.gain.linearRampToValueAtTime(0.18, now + 0.01);
-    buzzerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-    buzzerGain.connect(this.masterGain);
-
-    const buzzA = this.context.createOscillator();
-    buzzA.type = "square";
-    buzzA.frequency.setValueAtTime(92, now);
-    buzzA.frequency.exponentialRampToValueAtTime(64, now + 0.42);
-    buzzA.connect(buzzerGain);
-
-    const buzzB = this.context.createOscillator();
-    buzzB.type = "sawtooth";
-    buzzB.frequency.setValueAtTime(184, now);
-    buzzB.detune.setValueAtTime(-18, now);
-    buzzB.connect(buzzerGain);
-
-    buzzA.start(now);
-    buzzB.start(now);
-    buzzA.stop(now + 0.58);
-    buzzB.stop(now + 0.58);
-  }
-
-  playWin() {
-    if (!this.ready) {
-      return;
-    }
-
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    const now = this.context.currentTime;
-
-    notes.forEach((frequency, index) => {
-      const tone = this.context.createOscillator();
-      const toneGain = this.context.createGain();
-      const startAt = now + index * 0.08;
-
-      tone.type = "triangle";
-      tone.frequency.setValueAtTime(frequency, startAt);
-
-      toneGain.gain.setValueAtTime(0.0001, startAt);
-      toneGain.gain.linearRampToValueAtTime(0.08, startAt + 0.02);
-      toneGain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.38);
-
-      tone.connect(toneGain);
-      toneGain.connect(this.masterGain);
-      tone.start(startAt);
-      tone.stop(startAt + 0.42);
-    });
+  playerFire() { this.pulse({ type: "triangle", frequency: 780, endFrequency: 250, duration: 0.08, gain: 0.038, filterFrequency: 1450 }); }
+  turretFire() { this.pulse({ type: "sawtooth", frequency: 250, endFrequency: 90, duration: 0.11, gain: 0.034, filterFrequency: 760 }); }
+  impact() { this.pulse({ type: "square", frequency: 520, endFrequency: 180, duration: 0.09, gain: 0.024, filterFrequency: 420 }); }
+  destroy() { this.pulse({ type: "sawtooth", frequency: 180, endFrequency: 45, duration: 0.32, gain: 0.055, filterFrequency: 560 }); }
+  alarm(high) { this.pulse({ type: "square", frequency: high ? 980 : 760, endFrequency: high ? 760 : 620, duration: 0.08, gain: high ? 0.038 : 0.028, filterFrequency: high ? 2100 : 1600 }); }
+  fail() { this.pulse({ type: "sawtooth", frequency: 170, endFrequency: 52, duration: 0.34, gain: 0.06, filterFrequency: 460 }); }
+  win() {
+    this.pulse({ type: "sine", frequency: 420, endFrequency: 840, duration: 0.22, gain: 0.028, filterFrequency: 1550 });
+    this.pulse({ type: "triangle", frequency: 620, endFrequency: 1180, duration: 0.26, gain: 0.02, filterFrequency: 2200 });
   }
 }
 
 class InputHandler {
-  constructor(game) {
-    this.game = game;
+  constructor(canvas) {
+    this.canvas = canvas;
     this.keys = new Set();
-    this.attachEvents();
-  }
+    this.pointerDelta = 0;
+    this.fireRequested = false;
+    this.pointerLocked = false;
 
-  attachEvents() {
     window.addEventListener("keydown", (event) => {
-      const key = event.key.toLowerCase();
-
-      if (
-        ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
-          key
-        )
-      ) {
+      this.keys.add(event.key.toLowerCase());
+      if (event.key === " ") {
         event.preventDefault();
-        this.keys.add(key);
-        this.game.audio.unlock();
+        this.fireRequested = true;
       }
     });
 
     window.addEventListener("keyup", (event) => {
       this.keys.delete(event.key.toLowerCase());
     });
+
+    window.addEventListener("blur", () => {
+      this.keys.clear();
+      this.pointerDelta = 0;
+      this.fireRequested = false;
+    });
+
+    canvas.addEventListener("mousedown", () => {
+      this.fireRequested = true;
+    });
+
+    canvas.addEventListener("mousemove", (event) => {
+      if (this.pointerLocked) this.pointerDelta += event.movementX;
+    });
+
+    document.addEventListener("pointerlockchange", () => {
+      this.pointerLocked = document.pointerLockElement === canvas;
+    });
   }
 
-  getDirection() {
-    let x = 0;
-    let y = 0;
-
-    if (this.keys.has("arrowleft") || this.keys.has("a")) {
-      x -= 1;
-    }
-    if (this.keys.has("arrowright") || this.keys.has("d")) {
-      x += 1;
-    }
-    if (this.keys.has("arrowup") || this.keys.has("w")) {
-      y -= 1;
-    }
-    if (this.keys.has("arrowdown") || this.keys.has("s")) {
-      y += 1;
-    }
-
-    if (x !== 0 || y !== 0) {
-      const length = Math.hypot(x, y);
-      x /= length;
-      y /= length;
-    }
-
-    return { x, y };
+  clearTransient() {
+    this.pointerDelta = 0;
+    this.fireRequested = false;
   }
+
+  requestPointerLock() {
+    if (document.pointerLockElement !== this.canvas && this.canvas.requestPointerLock) {
+      this.canvas.requestPointerLock();
+    }
+  }
+
+  releasePointerLock() {
+    if (document.pointerLockElement === this.canvas && document.exitPointerLock) {
+      document.exitPointerLock();
+    }
+  }
+
+  isDown(...keys) { return keys.some((key) => this.keys.has(key)); }
+  getForward() { return (this.isDown("w", "arrowup") ? 1 : 0) - (this.isDown("s", "arrowdown") ? 1 : 0); }
+  getStrafe() { return (this.isDown("d") ? 1 : 0) - (this.isDown("a") ? 1 : 0); }
+  getTurnDirection() { return (this.isDown("e", "arrowright") ? 1 : 0) - (this.isDown("q", "arrowleft") ? 1 : 0); }
+  consumeMouseTurn() { const value = this.pointerDelta * 0.0025; this.pointerDelta = 0; return value; }
+  consumeFire() { const fire = this.fireRequested; this.fireRequested = false; return fire; }
 }
 
 class Game {
   constructor() {
     this.canvas = document.getElementById("gameCanvas");
-    this.context = this.canvas.getContext("2d");
-    this.overlay = document.getElementById("overlay");
-    this.overlayKicker = document.getElementById("overlayKicker");
-    this.overlayTitle = document.getElementById("overlayTitle");
-    this.overlayDescription = document.getElementById("overlayDescription");
-    this.primaryAction = document.getElementById("primaryAction");
-    this.secondaryAction = document.getElementById("secondaryAction");
+    this.ctx = this.canvas.getContext("2d");
+    this.input = new InputHandler(this.canvas);
+    this.audio = new AudioManager();
+
     this.levelValue = document.getElementById("levelValue");
     this.timerValue = document.getElementById("timerValue");
     this.bestValue = document.getElementById("bestValue");
@@ -639,1022 +374,1281 @@ class Game {
     this.handlingValue = document.getElementById("handlingValue");
     this.speedFill = document.getElementById("speedFill");
     this.speedLabel = document.getElementById("speedLabel");
+    this.detectionFill = document.getElementById("detectionFill");
+    this.detectionLabel = document.getElementById("detectionLabel");
+    this.cooldownFill = document.getElementById("cooldownFill");
+    this.cooldownLabel = document.getElementById("cooldownLabel");
     this.statusHint = document.getElementById("statusHint");
+
+    this.overlay = document.getElementById("overlay");
+    this.overlayKicker = document.getElementById("overlayKicker");
+    this.overlayTitle = document.getElementById("overlayTitle");
+    this.overlayDescription = document.getElementById("overlayDescription");
     this.overlayPattern = document.getElementById("overlayPattern");
     this.overlayPace = document.getElementById("overlayPace");
     this.overlayRoute = document.getElementById("overlayRoute");
+    this.primaryAction = document.getElementById("primaryAction");
+    this.secondaryAction = document.getElementById("secondaryAction");
 
-    this.audio = new AudioManager();
-    this.input = new InputHandler(this);
-
+    this.width = 0;
+    this.height = 0;
+    this.depthBuffer = [];
+    this.lastTime = 0;
+    this.runTimeMs = 0;
     this.level = 1;
     this.state = "menu";
-    this.failureReason = "";
-    this.elapsedMs = 0;
-    this.startTimestamp = 0;
-    this.lastFrameTime = performance.now();
-    this.lastMoveTimestamp = 0;
-    this.currentSpeed = 0;
-    this.displaySpeed = 0;
-    this.speedThreshold = 0;
-    this.bestTimes = this.loadBestTimes();
-    this.lastHudSyncAt = 0;
-    this.hudSnapshot = "";
-    this.levelProfile = null;
+    this.bestTime = this.loadBestTime();
+    this.alarmCooldown = 0;
+    this.alertLevel = 0;
+    this.hitMarker = 0;
+    this.damageFlash = 0;
+    this.aimTarget = null;
+    this.palette = PALETTES[0];
+    this.sectorName = `${SECTOR_PREFIXES[0]} ${SECTOR_SUFFIXES[0]}`;
+    this.remainingHostiles = 0;
+    this.gateOpen = false;
+    this.beams = [];
     this.particles = [];
-    this.shake = 0;
-    this.flash = 0;
-
-    this.maze = null;
-    this.layout = {
-      width: 0,
-      height: 0,
-      cellSize: 0,
-      offsetX: 0,
-      offsetY: 0,
-    };
-    this.backgroundCache = document.createElement("canvas");
-    this.backgroundCacheContext = this.backgroundCache.getContext("2d");
-    this.mazeCache = document.createElement("canvas");
-    this.mazeCacheContext = this.mazeCache.getContext("2d");
-
+    this.turrets = [];
+    this.emitters = [];
     this.player = {
-      x: 0,
-      y: 0,
-      radius: 10,
-      vx: 0,
-      vy: 0,
-      trail: [],
-      visible: true,
+      x: 1.5,
+      y: 1.5,
+      angle: 0,
+      hull: PLAYER_HULL,
+      detection: 0,
+      cooldown: 0,
+      kick: 0,
+      bob: 0,
+      movementBlend: 0,
     };
+    this.exit = { col: 1, row: 1 };
+    this.maze = generateMaze(15, 15, 10);
 
-    this.bindUI();
-    this.handleResize();
-    this.buildLevel(true);
-    this.showOverlay("menu");
-    window.addEventListener("resize", () => this.handleResize());
+    this.bindEvents();
+    this.resize();
+    this.buildLevel(this.level);
+    this.showMenuOverlay();
+    this.updateHud();
+
     requestAnimationFrame((timestamp) => this.loop(timestamp));
   }
 
-  bindUI() {
-    this.primaryAction.addEventListener("click", async () => {
-      await this.audio.unlock();
-
-      if (this.state === "won") {
-        this.level += 1;
-        this.buildLevel(true);
-        this.startCurrentMode();
-        return;
-      }
-
-      if (this.state === "caught") {
-        this.restartLevel();
-        return;
-      }
-
-      if (this.state === "paused") {
-        this.resumeRun();
-        return;
-      }
-
-      if (this.state === "menu") {
-        this.startCurrentMode();
-      }
-    });
-
-    this.secondaryAction.addEventListener("click", async () => {
-      await this.audio.unlock();
-      this.showMenu();
-    });
+  bindEvents() {
+    window.addEventListener("resize", () => this.resize());
 
     window.addEventListener("keydown", async (event) => {
-      const key = event.key.toLowerCase();
-
-      if (event.repeat) {
-        return;
-      }
-
-      if (key === " " || key === "enter") {
+      if (event.key.toLowerCase() === "p") {
         event.preventDefault();
-        await this.audio.unlock();
-
         if (this.state === "playing") {
           this.pauseRun();
-          return;
+        } else if (this.state === "paused") {
+          await this.resumeRun();
         }
-
-        if (["menu", "caught", "won", "paused"].includes(this.state)) {
-          this.primaryAction.click();
-        }
-        return;
       }
 
-      if (key === "r") {
+      if (event.key.toLowerCase() === "r") {
         event.preventDefault();
-        await this.audio.unlock();
-
         if (this.state !== "menu") {
-          this.restartLevel();
+          await this.audio.unlock();
+          this.buildLevel(this.level);
+          this.beginRun();
         }
-        return;
       }
 
-      if (key === "m") {
+      if (event.key.toLowerCase() === "m") {
         event.preventDefault();
-        await this.audio.unlock();
-        this.showMenu();
+        if (this.state === "playing" || this.state === "paused") {
+          this.goToMenu();
+        }
       }
+
+      if (event.key === "Enter" && this.overlay.classList.contains("show")) {
+        event.preventDefault();
+        await this.handlePrimaryAction();
+      }
+    });
+
+    this.canvas.addEventListener("click", async () => {
+      if (!this.audio.ready) {
+        await this.audio.unlock();
+      }
+      if (this.state === "playing") {
+        this.input.requestPointerLock();
+      }
+    });
+
+    this.primaryAction.addEventListener("click", async () => {
+      await this.handlePrimaryAction();
+    });
+
+    this.secondaryAction.addEventListener("click", () => {
+      this.handleSecondaryAction();
     });
   }
 
-  loadBestTimes() {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (error) {
-      return {};
-    }
-  }
+  async handlePrimaryAction() {
+    await this.audio.unlock();
 
-  saveBestTimes() {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.bestTimes));
-    } catch (error) {
+    if (this.state === "menu") {
+      this.buildLevel(this.level);
+      this.beginRun();
       return;
     }
-  }
 
-  bestKey() {
-    return `level-${this.level}`;
-  }
+    if (this.state === "paused") {
+      await this.resumeRun();
+      return;
+    }
 
-  getBestTime() {
-    return this.bestTimes[this.bestKey()] ?? null;
-  }
+    if (this.state === "gameover") {
+      this.buildLevel(this.level);
+      this.beginRun();
+      return;
+    }
 
-  setBestTime(milliseconds) {
-    const existing = this.getBestTime();
-    if (existing === null || milliseconds < existing) {
-      this.bestTimes[this.bestKey()] = milliseconds;
-      this.saveBestTimes();
+    if (this.state === "win") {
+      this.level += 1;
+      this.buildLevel(this.level);
+      this.beginRun();
     }
   }
 
-  createLevelProfile(level) {
-    const palette = chooseRandom(LEVEL_PALETTES);
-    const patternName = `${chooseRandom(PATTERN_PREFIXES)} ${chooseRandom(
-      PATTERN_SUFFIXES
-    )}`;
-    const sizeBoost = chooseRandom([0, 0, 0, 2]);
-    const speedPenalty = Math.floor(Math.random() * 18) + level * 3;
-    const acceleration = 1180 + level * 28 + Math.floor(Math.random() * 120);
-    const drag = 5.6 + Math.random() * 1.2;
-    const loopOpenings = Math.min(
-      1 + Math.floor(level / 2) + Math.floor(Math.random() * 2),
-      5
-    );
-    const challengeLabel =
-      speedPenalty < 15
-        ? CHALLENGE_LABELS[0]
-        : speedPenalty < 22
-        ? CHALLENGE_LABELS[1]
-        : speedPenalty < 28
-        ? CHALLENGE_LABELS[2]
-        : CHALLENGE_LABELS[3];
-    const handlingLabel =
-      drag >= 6.4
-        ? HANDLING_LABELS[0]
-        : drag >= 6
-        ? HANDLING_LABELS[1]
-        : HANDLING_LABELS[2];
-    const routeLabel =
-      loopOpenings <= 1
-        ? ROUTE_LABELS[0]
-        : loopOpenings === 2
-        ? ROUTE_LABELS[1]
-        : loopOpenings <= 4
-        ? ROUTE_LABELS[2]
-        : ROUTE_LABELS[3];
-
-    return {
-      name: patternName,
-      palette,
-      sizeBoost,
-      speedPenalty,
-      acceleration,
-      drag,
-      loopOpenings,
-      challengeLabel,
-      handlingLabel,
-      routeLabel,
-    };
-  }
-
-  handleResize() {
-    const rect = this.canvas.getBoundingClientRect();
-    const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
-
-    this.canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-    this.canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-    this.context.setTransform(ratio, 0, 0, ratio, 0, 0);
-
-    this.layout.width = rect.width;
-    this.layout.height = rect.height;
-
-    if (this.maze) {
-      this.computeMazeLayout();
-      this.buildBackgroundCache();
-      this.buildMazeCache();
-      this.resetPlayerPosition();
+  handleSecondaryAction() {
+    if (this.state === "paused" || this.state === "gameover" || this.state === "win") {
+      this.goToMenu();
     }
   }
 
-  buildLevel(resetTimer) {
-    this.levelProfile = this.createLevelProfile(this.level);
-    const minCellSize = Math.max(18, 30 - this.level * 0.45);
-    const maxColumns = Math.max(
-      13,
-      toOdd(Math.floor((this.layout.width - 30) / minCellSize))
-    );
-    const maxRows = Math.max(
-      9,
-      toOdd(Math.floor((this.layout.height - 30) / minCellSize))
-    );
-    const desiredColumns = 13 + (this.level - 1) + this.levelProfile.sizeBoost;
-    const desiredRows = 9 + (this.level - 1) + this.levelProfile.sizeBoost;
-    const columns = clamp(toOdd(desiredColumns), 13, maxColumns);
-    const rows = clamp(toOdd(desiredRows), 9, maxRows);
+  loadBestTime() {
+    const rawValue = Number(window.localStorage.getItem(STORAGE_KEY));
+    return Number.isFinite(rawValue) && rawValue > 0 ? rawValue : Infinity;
+  }
 
-    this.maze = generateMaze(columns, rows, this.levelProfile);
-    this.computeMazeLayout();
-    this.buildBackgroundCache();
-    this.buildMazeCache();
-
-    this.speedThreshold = this.getSpeedThreshold();
-    this.currentSpeed = 0;
-    this.displaySpeed = 0;
-    this.lastMoveTimestamp = performance.now();
-
-    if (resetTimer) {
-      this.elapsedMs = 0;
-      this.startTimestamp = 0;
+  saveBestTime(value) {
+    if (value < this.bestTime) {
+      this.bestTime = value;
+      window.localStorage.setItem(STORAGE_KEY, String(Math.round(value)));
     }
-
-    this.resetPlayerPosition();
-    this.updateHUD(true);
   }
 
-  computeMazeLayout() {
-    const padding = 18;
-    const cellSize = Math.floor(
-      Math.min(
-        (this.layout.width - padding * 2) / this.maze.columns,
-        (this.layout.height - padding * 2) / this.maze.rows
-      )
-    );
-
-    this.layout.cellSize = Math.max(12, cellSize);
-    this.layout.offsetX =
-      (this.layout.width - this.maze.columns * this.layout.cellSize) / 2;
-    this.layout.offsetY =
-      (this.layout.height - this.maze.rows * this.layout.cellSize) / 2;
-    this.player.radius = Math.max(5, this.layout.cellSize * 0.22);
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    this.width = this.canvas.clientWidth;
+    this.height = this.canvas.clientHeight;
+    this.canvas.width = Math.max(1, Math.floor(this.width * dpr));
+    this.canvas.height = Math.max(1, Math.floor(this.height * dpr));
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.imageSmoothingEnabled = true;
   }
 
-  buildBackgroundCache() {
-    this.backgroundCache.width = Math.max(1, Math.floor(this.layout.width));
-    this.backgroundCache.height = Math.max(1, Math.floor(this.layout.height));
-
-    const ctx = this.backgroundCacheContext;
-    const { width, height } = this.layout;
-    const palette = this.levelProfile.palette;
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, palette.backdropA);
-    gradient.addColorStop(0.45, palette.backdropB);
-    gradient.addColorStop(1, "#01040b");
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-
-    const nebulaA = ctx.createRadialGradient(
-      width * 0.18,
-      height * 0.22,
-      0,
-      width * 0.18,
-      height * 0.22,
-      width * 0.42
-    );
-    nebulaA.addColorStop(0, `${palette.wallA.replace("0.84", "0.14")}`);
-    nebulaA.addColorStop(0.55, `${palette.wallB.replace("0.76", "0.09")}`);
-    nebulaA.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = nebulaA;
-    ctx.fillRect(0, 0, width, height);
-
-    const nebulaB = ctx.createRadialGradient(
-      width * 0.82,
-      height * 0.78,
-      0,
-      width * 0.82,
-      height * 0.78,
-      width * 0.36
-    );
-    nebulaB.addColorStop(0, `${palette.wallC.replace("0.84", "0.12").replace("0.86", "0.12")}`);
-    nebulaB.addColorStop(0.58, `${palette.wallB.replace("0.76", "0.07")}`);
-    nebulaB.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = nebulaB;
-    ctx.fillRect(0, 0, width, height);
-
-    const starCount = Math.max(90, Math.floor((width * height) / 3600));
-    ctx.save();
-    for (let index = 0; index < starCount; index += 1) {
-      const x = Math.random() * width;
-      const y = Math.random() * height;
-      const radius = Math.random() < 0.82 ? Math.random() * 1.4 + 0.2 : Math.random() * 2.2 + 0.8;
-      const alpha = 0.18 + Math.random() * 0.68;
-      const tint = Math.random();
-
-      ctx.beginPath();
-      ctx.fillStyle =
-        tint < 0.16
-          ? `rgba(191, 219, 254, ${alpha})`
-          : tint < 0.3
-          ? `rgba(253, 224, 71, ${alpha * 0.82})`
-          : `rgba(255, 255, 255, ${alpha})`;
-      ctx.shadowBlur = radius < 1.2 ? 0 : 10 + Math.random() * 10;
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
+  setOverlayState(kind, { kicker, title, description, pattern, pace, route, primary, secondary = null }) {
+    this.overlay.className = `overlay show ${kind}`;
+    this.overlayKicker.textContent = kicker;
+    this.overlayTitle.textContent = title;
+    this.overlayDescription.textContent = description;
+    this.overlayPattern.textContent = pattern;
+    this.overlayPace.textContent = pace;
+    this.overlayRoute.textContent = route;
+    this.primaryAction.textContent = primary;
+    this.secondaryAction.hidden = !secondary;
+    if (secondary) {
+      this.secondaryAction.textContent = secondary;
     }
-    ctx.restore();
-
-    const streakCount = Math.max(12, Math.floor(width / 90));
-    ctx.save();
-    ctx.lineCap = "round";
-    for (let index = 0; index < streakCount; index += 1) {
-      const x = Math.random() * width;
-      const y = Math.random() * height;
-      const length = 18 + Math.random() * 64;
-      const angle = -0.32 + Math.random() * 0.12;
-      const stroke = 0.5 + Math.random() * 1.2;
-      const gradientStroke = ctx.createLinearGradient(
-        x,
-        y,
-        x + Math.cos(angle) * length,
-        y + Math.sin(angle) * length
-      );
-
-      gradientStroke.addColorStop(0, "rgba(255, 255, 255, 0)");
-      gradientStroke.addColorStop(0.5, "rgba(255, 255, 255, 0.18)");
-      gradientStroke.addColorStop(1, "rgba(255, 255, 255, 0)");
-      ctx.strokeStyle = gradientStroke;
-      ctx.lineWidth = stroke;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    const vignette = ctx.createRadialGradient(
-      width * 0.5,
-      height * 0.5,
-      Math.min(width, height) * 0.12,
-      width * 0.5,
-      height * 0.5,
-      Math.max(width, height) * 0.72
-    );
-    vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-    vignette.addColorStop(0.7, "rgba(2, 6, 23, 0.16)");
-    vignette.addColorStop(1, "rgba(2, 6, 23, 0.46)");
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, width, height);
   }
 
-  buildMazeCache() {
-    this.mazeCache.width = Math.max(1, Math.floor(this.layout.width));
-    this.mazeCache.height = Math.max(1, Math.floor(this.layout.height));
-
-    const ctx = this.mazeCacheContext;
-    const palette = this.levelProfile.palette;
-    ctx.clearRect(0, 0, this.layout.width, this.layout.height);
-
-    const wallGradient = ctx.createLinearGradient(
-      this.layout.offsetX,
-      this.layout.offsetY,
-      this.layout.offsetX + this.maze.columns * this.layout.cellSize,
-      this.layout.offsetY + this.maze.rows * this.layout.cellSize
-    );
-    wallGradient.addColorStop(0, palette.wallA);
-    wallGradient.addColorStop(0.5, palette.wallB);
-    wallGradient.addColorStop(1, palette.wallC);
-
-    ctx.save();
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = palette.wallC;
-
-    for (let row = 0; row < this.maze.rows; row += 1) {
-      for (let col = 0; col < this.maze.columns; col += 1) {
-        const x = this.layout.offsetX + col * this.layout.cellSize;
-        const y = this.layout.offsetY + row * this.layout.cellSize;
-
-        if (this.maze.grid[row][col] === 1) {
-          ctx.fillStyle = wallGradient;
-          ctx.fillRect(x + 1, y + 1, this.layout.cellSize - 2, this.layout.cellSize - 2);
-        } else {
-          ctx.fillStyle = "rgba(15, 23, 42, 0.22)";
-          ctx.fillRect(x + 1, y + 1, this.layout.cellSize - 2, this.layout.cellSize - 2);
-        }
-      }
-    }
-
-    ctx.restore();
-    this.drawZoneCell(
-      ctx,
-      this.maze.start.col,
-      this.maze.start.row,
-      "rgba(34, 197, 94, 0.95)"
-    );
-    this.drawZoneCell(
-      ctx,
-      this.maze.exit.col,
-      this.maze.exit.row,
-      "rgba(59, 130, 246, 0.95)"
-    );
+  showMenuOverlay() {
+    this.state = "menu";
+    this.input.releasePointerLock();
+    this.setOverlayState("start-screen", {
+      kicker: "Sector Brief",
+      title: "VOID MAZE",
+      description: "Slip through the orbital maze, break the defense net, then take the jump gate before the facility locks down.",
+      pattern: `${this.sectorName} / ${this.palette.code}`,
+      pace: "Stealth first",
+      route: "Disable defenses",
+      primary: "Deploy",
+    });
   }
 
-  drawZoneCell(ctx, col, row, fill) {
-    const x = this.layout.offsetX + col * this.layout.cellSize;
-    const y = this.layout.offsetY + row * this.layout.cellSize;
-
-    ctx.save();
-    ctx.fillStyle = fill;
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = fill;
-    ctx.fillRect(x + 3, y + 3, this.layout.cellSize - 6, this.layout.cellSize - 6);
-    ctx.restore();
+  pauseRun() {
+    if (this.state !== "playing") return;
+    this.state = "paused";
+    this.input.releasePointerLock();
+    this.setOverlayState("pause-screen", {
+      kicker: "Signal Hold",
+      title: "PAUSED",
+      description: "The facility scan is frozen. Resume when you are ready to move again.",
+      pattern: `${this.sectorName} / ${this.palette.code}`,
+      pace: this.alertLevel === 2 ? "Alarm maxed" : this.alertLevel === 1 ? "Trace live" : "Quiet",
+      route: this.gateOpen ? "Reach jump gate" : "Remove remaining defenses",
+      primary: "Resume",
+      secondary: "Menu",
+    });
   }
 
-  updateOverlayMetrics() {
-    this.overlayPattern.textContent = this.levelProfile.name;
-    this.overlayPace.textContent = this.levelProfile.challengeLabel;
-    this.overlayRoute.textContent = this.levelProfile.routeLabel;
+  async resumeRun() {
+    if (this.state !== "paused") return;
+    await this.audio.unlock();
+    this.state = "playing";
+    this.overlay.className = "overlay";
+    this.input.requestPointerLock();
   }
 
-  startCurrentMode() {
-    this.failureReason = "";
-    this.audio.quiet();
-    this.currentSpeed = 0;
-    this.displaySpeed = 0;
-    this.particles = [];
-    this.flash = 0;
-    this.shake = 0;
-    this.resetPlayerPosition();
-    this.beginRun();
+  goToMenu() {
+    this.buildLevel(this.level);
+    this.showMenuOverlay();
+    this.updateHud();
   }
 
   beginRun() {
     this.state = "playing";
-    const now = performance.now();
-    this.startTimestamp = now;
-    this.lastMoveTimestamp = now;
-    this.elapsedMs = 0;
-    this.failureReason = "";
-    this.player.vx = 0;
-    this.player.vy = 0;
-    this.hideOverlay();
-    this.statusHint.textContent =
-      `Arrow keys or WASD. ${this.levelProfile.challengeLabel} pacing, ${this.levelProfile.routeLabel.toLowerCase()} route.`;
-    this.updateHUD(true);
+    this.runTimeMs = 0;
+    this.alertLevel = 0;
+    this.alarmCooldown = 0;
+    this.hitMarker = 0;
+    this.damageFlash = 0;
+    this.overlay.className = "overlay";
+    this.input.requestPointerLock();
+    this.updateHud();
   }
 
-  pauseRun() {
-    if (this.state !== "playing") {
-      return;
+  buildLevel(level) {
+    const columns = toOdd(clamp(15 + level * 2, 15, 23));
+    const rows = toOdd(clamp(15 + level * 2, 15, 23));
+    const openings = clamp(10 + level * 2, 10, 22);
+    this.maze = generateMaze(columns, rows, openings);
+    this.exit = { col: this.maze.exit.col, row: this.maze.exit.row };
+    this.palette = PALETTES[(level - 1) % PALETTES.length];
+    this.sectorName = `${chooseRandom(SECTOR_PREFIXES)} ${chooseRandom(SECTOR_SUFFIXES)}`;
+    this.applyPalette();
+
+    const startX = this.maze.start.col + 0.5;
+    const startY = this.maze.start.row + 0.5;
+    const exitX = this.exit.col + 0.5;
+    const exitY = this.exit.row + 0.5;
+
+    this.player = {
+      x: startX,
+      y: startY,
+      angle: Math.atan2(exitY - startY, exitX - startX),
+      hull: PLAYER_HULL,
+      detection: 0,
+      cooldown: 0,
+      kick: 0,
+      bob: 0,
+      movementBlend: 0,
+    };
+
+    this.beams = [];
+    this.particles = [];
+    this.turrets = this.spawnTurrets(level);
+    this.emitters = this.spawnEmitters(level);
+    this.remainingHostiles = this.turrets.length + this.emitters.length;
+    this.gateOpen = this.remainingHostiles === 0;
+    this.aimTarget = null;
+    this.refreshObjectiveHint();
+    this.updateHud();
+  }
+
+  applyPalette() {
+    const root = document.documentElement.style;
+    root.setProperty("--accent", this.palette.accent);
+    root.setProperty("--accent-strong", this.palette.gate);
+  }
+
+  openCells() {
+    const cells = [];
+    for (let row = 1; row < this.maze.rows - 1; row += 1) {
+      for (let col = 1; col < this.maze.columns - 1; col += 1) {
+        if (this.maze.grid[row][col] === 1) continue;
+        const distToStart = Math.hypot(col - this.maze.start.col, row - this.maze.start.row);
+        const distToExit = Math.hypot(col - this.exit.col, row - this.exit.row);
+        if (distToStart < 4 || distToExit < 3) continue;
+        cells.push({ col, row, distToStart, distToExit });
+      }
+    }
+    return shuffle(cells);
+  }
+
+  spawnTurrets(level) {
+    const turrets = [];
+    const desired = clamp(2 + Math.floor(level / 2), 3, 5);
+
+    for (const cell of this.openCells()) {
+      const farEnough = turrets.every((turret) => Math.hypot(turret.x - (cell.col + 0.5), turret.y - (cell.row + 0.5)) > 3.4);
+      if (!farEnough) continue;
+
+      turrets.push({
+        kind: "turret",
+        x: cell.col + 0.5,
+        y: cell.row + 0.5,
+        angle: Math.random() * TAU,
+        health: level >= 4 ? 3 : 2,
+        maxHealth: level >= 4 ? 3 : 2,
+        cooldown: 0.8 + Math.random() * 0.9,
+        glow: 0,
+        pulse: Math.random() * TAU,
+        destroyed: false,
+      });
+
+      if (turrets.length >= desired) break;
     }
 
-    this.state = "paused";
-    this.audio.quiet();
-    this.showOverlay("paused");
+    return turrets;
   }
 
-  resumeRun() {
-    if (this.state !== "paused") {
-      return;
+  spawnEmitters(level) {
+    const candidates = [];
+
+    for (let row = 1; row < this.maze.rows - 1; row += 1) {
+      for (let col = 1; col < this.maze.columns - 1; col += 1) {
+        if (this.maze.grid[row][col] === 1) continue;
+
+        const wallHorizontal = this.maze.grid[row][col - 1] === 1 && this.maze.grid[row][col + 1] === 1;
+        const openVertical = this.maze.grid[row - 1][col] === 0 && this.maze.grid[row + 1][col] === 0;
+        const wallVertical = this.maze.grid[row - 1][col] === 1 && this.maze.grid[row + 1][col] === 1;
+        const openHorizontal = this.maze.grid[row][col - 1] === 0 && this.maze.grid[row][col + 1] === 0;
+        const distToStart = Math.hypot(col - this.maze.start.col, row - this.maze.start.row);
+        const distToExit = Math.hypot(col - this.exit.col, row - this.exit.row);
+
+        if (distToStart < 4 || distToExit < 3) continue;
+
+        if (wallHorizontal && openVertical) {
+          const mountLeft = Math.random() < 0.5;
+          candidates.push({
+            kind: "emitter",
+            x: mountLeft ? col + 0.12 : col + 0.88,
+            y: row + 0.5,
+            beamAx: col + 0.14,
+            beamAy: row + 0.5,
+            beamBx: col + 0.86,
+            beamBy: row + 0.5,
+            health: 2,
+            maxHealth: 2,
+            destroyed: false,
+            pulse: Math.random() * TAU,
+            offset: Math.random() * 2.6,
+          });
+        } else if (wallVertical && openHorizontal) {
+          const mountTop = Math.random() < 0.5;
+          candidates.push({
+            kind: "emitter",
+            x: col + 0.5,
+            y: mountTop ? row + 0.12 : row + 0.88,
+            beamAx: col + 0.5,
+            beamAy: row + 0.14,
+            beamBx: col + 0.5,
+            beamBy: row + 0.86,
+            health: 2,
+            maxHealth: 2,
+            destroyed: false,
+            pulse: Math.random() * TAU,
+            offset: Math.random() * 2.6,
+          });
+        }
+      }
     }
 
-    const now = performance.now();
-    this.state = "playing";
-    this.startTimestamp = now - this.elapsedMs;
-    this.lastMoveTimestamp = now;
-    this.hideOverlay();
-    this.statusHint.textContent =
-      `Back live. ${this.levelProfile.handlingLabel} handling, speed cap ${Math.round(
-        this.speedThreshold
-      )}.`;
-    this.updateHUD(true);
+    return shuffle(candidates).slice(0, clamp(1 + Math.floor(level / 2), 2, 4));
   }
 
-  restartLevel() {
-    this.buildLevel(true);
-    this.startCurrentMode();
+  isWallCell(col, row) {
+    if (row < 0 || row >= this.maze.rows || col < 0 || col >= this.maze.columns) return true;
+    return this.maze.grid[row][col] === 1;
   }
 
-  showMenu() {
-    this.audio.quiet();
-    this.shake = 0;
-    this.showOverlay("menu");
+  collides(x, y, radius = PLAYER_RADIUS) {
+    const samples = [
+      [x, y],
+      [x - radius, y - radius],
+      [x + radius, y - radius],
+      [x - radius, y + radius],
+      [x + radius, y + radius],
+    ];
+
+    return samples.some(([sampleX, sampleY]) => this.isWallCell(Math.floor(sampleX), Math.floor(sampleY)));
   }
 
-  hideOverlay() {
-    this.overlay.classList.remove(
-      "show",
-      "active",
-      "start-screen",
-      "gameover-screen",
-      "win-screen",
-      "pause-screen"
-    );
+  movePlayer(delta) {
+    const mouseTurn = this.input.consumeMouseTurn();
+    const keyTurn = this.input.getTurnDirection() * TURN_SPEED * delta;
+    this.player.angle = normalizeAngle(this.player.angle + mouseTurn + keyTurn);
+
+    const forward = this.input.getForward();
+    const strafe = this.input.getStrafe();
+    const creeping = this.input.isDown("shift");
+    const speed = creeping ? CREEP_SPEED : MOVE_SPEED;
+    const magnitude = Math.hypot(forward, strafe) || 1;
+    const moveX =
+      (Math.cos(this.player.angle) * forward + Math.cos(this.player.angle + Math.PI / 2) * strafe) / magnitude;
+    const moveY =
+      (Math.sin(this.player.angle) * forward + Math.sin(this.player.angle + Math.PI / 2) * strafe) / magnitude;
+
+    if (forward !== 0 || strafe !== 0) {
+      const nextX = this.player.x + moveX * speed * delta;
+      const nextY = this.player.y + moveY * speed * delta;
+
+      if (!this.collides(nextX, this.player.y)) this.player.x = nextX;
+      if (!this.collides(this.player.x, nextY)) this.player.y = nextY;
+
+      this.player.bob += delta * (creeping ? 4 : 7);
+      this.player.movementBlend = lerp(this.player.movementBlend, 1, delta * 7);
+    } else {
+      this.player.movementBlend = lerp(this.player.movementBlend, 0, delta * 6);
+    }
   }
 
-  showOverlay(kind) {
-    this.overlay.classList.remove(
-      "start-screen",
-      "gameover-screen",
-      "win-screen",
-      "pause-screen"
-    );
-    this.overlay.classList.add("show", "active");
-    this.updateOverlayMetrics();
+  ray(originX, originY, angle, maxDistance = MAX_VIEW_DISTANCE) {
+    const directionX = Math.cos(angle);
+    const directionY = Math.sin(angle);
+    let mapX = Math.floor(originX);
+    let mapY = Math.floor(originY);
+    const deltaDistanceX = directionX === 0 ? 1e9 : Math.abs(1 / directionX);
+    const deltaDistanceY = directionY === 0 ? 1e9 : Math.abs(1 / directionY);
 
-    if (kind === "menu") {
-      this.state = "menu";
-      this.failureReason = "";
-      this.overlay.classList.add("start-screen");
-      this.overlayKicker.textContent = "Silent Run";
-      this.overlayTitle.textContent = "SILENT MAZE";
-      this.overlayDescription.textContent =
-        "A keyboard-only stealth maze. Every level remixes the layout, pacing, and route pressure.";
-      this.primaryAction.textContent = "Start Game";
-      this.secondaryAction.hidden = true;
-      this.statusHint.textContent =
-        "Press Start Game. The timer starts instantly and the maze goes live.";
-      return;
+    let stepX = 0;
+    let stepY = 0;
+    let sideDistanceX = 0;
+    let sideDistanceY = 0;
+
+    if (directionX < 0) {
+      stepX = -1;
+      sideDistanceX = (originX - mapX) * deltaDistanceX;
+    } else {
+      stepX = 1;
+      sideDistanceX = (mapX + 1 - originX) * deltaDistanceX;
     }
 
-    if (kind === "paused") {
-      this.state = "paused";
-      this.overlay.classList.add("pause-screen");
-      this.overlayKicker.textContent = this.levelProfile.name;
-      this.overlayTitle.textContent = "Run Paused";
-      this.overlayDescription.textContent =
-        "Hold your line. Resume when you are ready to push deeper into the maze.";
-      this.primaryAction.textContent = "Resume";
-      this.secondaryAction.hidden = false;
-      this.secondaryAction.textContent = "Menu";
-      this.statusHint.textContent = "Paused. Space resumes, R restarts, M returns to menu.";
-      return;
+    if (directionY < 0) {
+      stepY = -1;
+      sideDistanceY = (originY - mapY) * deltaDistanceY;
+    } else {
+      stepY = 1;
+      sideDistanceY = (mapY + 1 - originY) * deltaDistanceY;
     }
 
-    if (kind === "caught") {
-      this.state = "caught";
-      this.overlay.classList.add("gameover-screen");
-      this.overlayKicker.textContent = this.levelProfile.name;
-      this.overlayTitle.textContent = "You got caught";
-      this.overlayDescription.textContent =
-        this.failureReason ||
-        "The maze detected you. Reset and move with more control.";
-      this.primaryAction.textContent = "Restart";
-      this.secondaryAction.hidden = false;
-      this.secondaryAction.textContent = "Menu";
-      this.statusHint.textContent =
-        "Restart to reroll the route and try a cleaner line.";
-      return;
+    let distance = 0;
+    let vertical = false;
+
+    while (distance < maxDistance) {
+      if (sideDistanceX < sideDistanceY) {
+        mapX += stepX;
+        distance = sideDistanceX;
+        sideDistanceX += deltaDistanceX;
+        vertical = true;
+      } else {
+        mapY += stepY;
+        distance = sideDistanceY;
+        sideDistanceY += deltaDistanceY;
+        vertical = false;
+      }
+
+      if (mapX < 0 || mapY < 0 || mapX >= this.maze.columns || mapY >= this.maze.rows) {
+        break;
+      }
+
+      if (this.maze.grid[mapY][mapX] === 1) {
+        return {
+          distance,
+          hitX: originX + directionX * distance,
+          hitY: originY + directionY * distance,
+          vertical,
+        };
+      }
     }
 
-    this.state = "won";
-    this.overlay.classList.add("win-screen");
-    const best = this.getBestTime();
-    this.overlayKicker.textContent = this.levelProfile.name;
-    this.overlayTitle.textContent = "Stealth Complete";
-    this.overlayDescription.textContent = `${this.levelProfile.name} cleared in ${formatTime(
-      this.elapsedMs
-    )}${best !== null && best === this.elapsedMs ? " - New best time" : ""}.`;
-    this.primaryAction.textContent = "Next Level";
-    this.secondaryAction.hidden = false;
-    this.secondaryAction.textContent = "Menu";
-    this.statusHint.textContent =
-      "Next level brings a fresh pattern, new route branches, and a sharper pace target.";
-  }
-
-  resetPlayerPosition() {
-    const start = this.cellCenter(this.maze.start.col, this.maze.start.row);
-    this.player.x = start.x;
-    this.player.y = start.y;
-    this.player.vx = 0;
-    this.player.vy = 0;
-    this.player.trail = [];
-  }
-
-  cellCenter(col, row) {
     return {
-      x: this.layout.offsetX + col * this.layout.cellSize + this.layout.cellSize / 2,
-      y: this.layout.offsetY + row * this.layout.cellSize + this.layout.cellSize / 2,
+      distance: maxDistance,
+      hitX: originX + directionX * maxDistance,
+      hitY: originY + directionY * maxDistance,
+      vertical,
     };
   }
 
-  getSpeedThreshold() {
-    return Math.max(360, 720 - (this.level - 1) * 18 - this.levelProfile.speedPenalty);
+  hasLineOfSight(fromX, fromY, toX, toY, padding = 0.18) {
+    const distance = Math.hypot(toX - fromX, toY - fromY);
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    const hit = this.ray(fromX, fromY, angle, distance + 0.04);
+    return hit.distance >= distance - padding;
   }
 
-  circleHitsWall(x, y, radius) {
-    const left = Math.floor((x - radius - this.layout.offsetX) / this.layout.cellSize);
-    const right = Math.floor((x + radius - this.layout.offsetX) / this.layout.cellSize);
-    const top = Math.floor((y - radius - this.layout.offsetY) / this.layout.cellSize);
-    const bottom = Math.floor((y + radius - this.layout.offsetY) / this.layout.cellSize);
+  getAlertLevel() {
+    if (this.player.detection >= 76) return 2;
+    if (this.player.detection >= 38) return 1;
+    return 0;
+  }
 
-    for (let row = top; row <= bottom; row += 1) {
-      for (let col = left; col <= right; col += 1) {
-        if (
-          row < 0 ||
-          col < 0 ||
-          row >= this.maze.rows ||
-          col >= this.maze.columns
-        ) {
-          return true;
-        }
+  isEmitterActive(emitter) {
+    const cycle = this.alertLevel === 2 ? 1.8 : this.alertLevel === 1 ? 2.1 : 2.5;
+    const activeWindow = this.alertLevel === 2 ? 0.78 : this.alertLevel === 1 ? 0.66 : 0.56;
+    const phase = ((this.runTimeMs / 1000) + emitter.offset) % cycle;
+    return phase < cycle * activeWindow;
+  }
 
-        if (this.maze.grid[row][col] !== 1) {
-          continue;
-        }
+  getAimTarget() {
+    const wallHit = this.ray(this.player.x, this.player.y, this.player.angle, MAX_VIEW_DISTANCE);
+    const directionX = Math.cos(this.player.angle);
+    const directionY = Math.sin(this.player.angle);
+    let bestTarget = null;
+    let bestDistance = wallHit.distance;
 
-        const cellLeft = this.layout.offsetX + col * this.layout.cellSize;
-        const cellTop = this.layout.offsetY + row * this.layout.cellSize;
-        const nearestX = clamp(x, cellLeft, cellLeft + this.layout.cellSize);
-        const nearestY = clamp(y, cellTop, cellTop + this.layout.cellSize);
+    const targets = [
+      ...this.turrets.filter((turret) => !turret.destroyed),
+      ...this.emitters.filter((emitter) => !emitter.destroyed),
+    ];
 
-        if ((x - nearestX) ** 2 + (y - nearestY) ** 2 <= radius ** 2) {
-          return true;
-        }
-      }
+    for (const target of targets) {
+      const deltaX = target.x - this.player.x;
+      const deltaY = target.y - this.player.y;
+      const forward = deltaX * directionX + deltaY * directionY;
+      if (forward <= 0 || forward >= bestDistance) continue;
+
+      const sideways = Math.abs(-directionY * deltaX + directionX * deltaY);
+      const radius = target.kind === "turret" ? TURRET_RADIUS + 0.05 : EMITTER_RADIUS + 0.04;
+      if (sideways > radius) continue;
+      if (!this.hasLineOfSight(this.player.x, this.player.y, target.x, target.y, radius)) continue;
+
+      bestDistance = forward;
+      bestTarget = target;
     }
 
-    return false;
+    return bestTarget;
   }
 
-  circleInExit(x, y, radius) {
-    const cellLeft = this.layout.offsetX + this.maze.exit.col * this.layout.cellSize;
-    const cellTop = this.layout.offsetY + this.maze.exit.row * this.layout.cellSize;
-    const cellRight = cellLeft + this.layout.cellSize;
-    const cellBottom = cellTop + this.layout.cellSize;
-    const nearestX = clamp(x, cellLeft, cellRight);
-    const nearestY = clamp(y, cellTop, cellBottom);
-
-    return (x - nearestX) ** 2 + (y - nearestY) ** 2 <= radius ** 2;
+  refreshHostileCount() {
+    this.remainingHostiles =
+      this.turrets.filter((turret) => !turret.destroyed).length +
+      this.emitters.filter((emitter) => !emitter.destroyed).length;
+    this.gateOpen = this.remainingHostiles === 0;
   }
 
-  emitBurst(x, y, color, count, force) {
+  refreshObjectiveHint() {
+    if (this.gateOpen) {
+      this.statusHint.textContent = "Jump gate unlocked. Cross the maze and hit the glowing exit column.";
+      return;
+    }
+
+    if (this.alertLevel === 2) {
+      this.statusHint.textContent = "Alarm maxed. Turrets rotate faster and laser lanes stay hot longer.";
+      return;
+    }
+
+    if (this.alertLevel === 1) {
+      this.statusHint.textContent = "Facility trace active. Stay low, move clean, and avoid open sightlines.";
+      return;
+    }
+
+    this.statusHint.textContent = "Disable every defense node in the maze. The jump gate unlocks when the count hits zero.";
+  }
+
+  updateHud() {
+    this.levelValue.textContent = formatSector(this.level);
+    this.timerValue.textContent = formatTime(this.runTimeMs);
+    this.bestValue.textContent = String(this.remainingHostiles).padStart(2, "0");
+    this.patternValue.textContent = this.palette.code;
+    this.challengeValue.textContent = this.gateOpen ? "Open" : "Locked";
+    this.handlingValue.textContent = Number.isFinite(this.bestTime) ? formatTime(this.bestTime) : "--";
+
+    const hullRatio = clamp(this.player.hull / PLAYER_HULL, 0, 1);
+    const cooldownRatio = 1 - clamp(this.player.cooldown / PLAYER_COOLDOWN, 0, 1);
+    const detectionRatio = clamp(this.player.detection / 100, 0, 1);
+
+    this.speedFill.style.width = `${hullRatio * 100}%`;
+    this.detectionFill.style.width = `${detectionRatio * 100}%`;
+    this.cooldownFill.style.width = `${cooldownRatio * 100}%`;
+
+    this.speedLabel.textContent = hullRatio > 0.65 ? "Stable" : hullRatio > 0.3 ? "Compromised" : "Critical";
+    this.cooldownLabel.textContent = this.player.cooldown > 0.02 ? "Charging" : "Ready";
+    this.detectionLabel.textContent = this.alertLevel === 2 ? "Alarm" : this.alertLevel === 1 ? "Traced" : "Hidden";
+  }
+
+  spawnSparks(x, y, color, count = 7, speed = 2) {
     for (let index = 0; index < count; index += 1) {
-      const angle = (Math.PI * 2 * index) / count + Math.random() * 0.45;
-      const speed = force * (0.45 + Math.random() * 0.75);
+      const angle = Math.random() * TAU;
+      const velocity = speed * (0.35 + Math.random());
+      const life = 0.18 + Math.random() * 0.28;
       this.particles.push({
         x,
         y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0.35 + Math.random() * 0.45,
+        vx: Math.cos(angle) * velocity,
+        vy: Math.sin(angle) * velocity,
+        size: 0.04 + Math.random() * 0.06,
+        life,
+        maxLife: life,
         color,
-        size: 2 + Math.random() * 3.5,
       });
     }
-
-    if (this.particles.length > 80) {
-      this.particles.splice(0, this.particles.length - 80);
-    }
   }
 
-  triggerFailure(reason) {
-    const failureText = reason;
-    this.failureReason = failureText;
-    this.state = "caught";
-    this.currentSpeed = 0;
-    this.player.vx = 0;
-    this.player.vy = 0;
-    this.shake = 14;
-    this.flash = 0.3;
-    this.emitBurst(this.player.x, this.player.y, "rgba(251, 113, 133, 0.95)", 18, 120);
-    this.audio.playBuzzer();
-    this.audio.quiet();
-    this.updateHUD(true);
-    this.showOverlay("caught");
+  spawnExplosion(x, y, color) {
+    this.spawnSparks(x, y, color, 16, 3.4);
   }
 
-  handleWin() {
-    if (this.state !== "playing") {
-      return;
-    }
-
-    this.elapsedMs = performance.now() - this.startTimestamp;
-    this.setBestTime(this.elapsedMs);
-    this.shake = 6;
-    this.flash = 0.18;
-    this.emitBurst(
-      this.player.x,
-      this.player.y,
-      "rgba(96, 165, 250, 0.95)",
-      20,
-      100
-    );
-    this.audio.playWin();
-    this.audio.quiet();
-    this.updateHUD(true);
-    this.showOverlay("won");
-  }
-
-  updateBall(dt) {
-    const direction = this.input.getDirection();
-    const acceleration = this.levelProfile.acceleration;
-    const drag = this.levelProfile.drag;
-
-    this.player.vx += direction.x * acceleration * dt;
-    this.player.vy += direction.y * acceleration * dt;
-
-    this.player.vx -= this.player.vx * drag * dt;
-    this.player.vy -= this.player.vy * drag * dt;
-
-    const moveX = this.player.vx * dt;
-    const moveY = this.player.vy * dt;
-    const distance = Math.hypot(moveX, moveY);
-    const steps = Math.max(
-      1,
-      Math.ceil(distance / Math.max(1, this.player.radius * 0.45))
-    );
-
-    for (let step = 0; step < steps; step += 1) {
-      const nextX = this.player.x + moveX / steps;
-      const nextY = this.player.y + moveY / steps;
-
-      if (this.circleHitsWall(nextX, nextY, this.player.radius)) {
-        this.triggerFailure("Wall contact detected. The maze buzzed you out.");
-        return;
-      }
-
-      this.player.x = nextX;
-      this.player.y = nextY;
-
-      if (this.circleInExit(this.player.x, this.player.y, this.player.radius)) {
-        this.handleWin();
-        return;
-      }
-    }
-
-    this.currentSpeed = Math.hypot(this.player.vx, this.player.vy);
-    if (this.currentSpeed > this.speedThreshold) {
-      this.triggerFailure("You moved too fast. The alarm heard the rush.");
-      return;
-    }
-
-    if (this.currentSpeed > 5) {
-      this.addTrailPoint(this.player.x, this.player.y);
-    }
-  }
-
-  addTrailPoint(x, y) {
-    const lastPoint = this.player.trail[this.player.trail.length - 1];
-    if (lastPoint && Math.hypot(lastPoint.x - x, lastPoint.y - y) < this.player.radius * 0.55) {
-      return;
-    }
-
-    this.player.trail.push({
-      x,
-      y,
-      life: 1,
-    });
-
-    if (this.player.trail.length > 18) {
-      this.player.trail.shift();
-    }
-  }
-
-  updateTrail(dt) {
-    this.player.trail = this.player.trail
-      .map((point) => ({
-        ...point,
-        life: point.life - dt * 1.9,
-      }))
-      .filter((point) => point.life > 0);
-  }
-
-  updateHUD(force = false) {
-    const now = performance.now();
-    if (!force && now - this.lastHudSyncAt < 48) {
-      return;
-    }
-
-    const ratio = clamp(this.displaySpeed / Math.max(1, this.speedThreshold), 0, 1.2);
-    const width = Math.max(2, ratio * 100);
-    const bestTime = formatTime(this.getBestTime());
-    const snapshot = [
-      this.level,
-      this.levelProfile.name,
-      this.levelProfile.challengeLabel,
-      this.levelProfile.handlingLabel,
-      formatTime(this.elapsedMs),
-      bestTime,
-      Math.round(width),
-      this.state,
-      ratio >= 0.78 ? "warn" : "safe",
-    ].join("|");
-
-    if (!force && snapshot === this.hudSnapshot) {
-      return;
-    }
-
-    this.hudSnapshot = snapshot;
-    this.lastHudSyncAt = now;
-
-    this.levelValue.textContent = String(this.level);
-    this.patternValue.textContent = this.levelProfile.name;
-    this.challengeValue.textContent = this.levelProfile.challengeLabel;
-    this.handlingValue.textContent = this.levelProfile.handlingLabel;
-    this.timerValue.textContent = formatTime(this.elapsedMs);
-    this.bestValue.textContent = bestTime;
-    this.speedFill.style.width = `${width}%`;
-    this.speedFill.style.opacity = this.state === "playing" ? "1" : "0.45";
-    this.speedFill.classList.toggle("warn", ratio >= 0.78);
-
-    if (this.state !== "playing") {
-      this.speedLabel.textContent =
-        this.state === "won"
-          ? "Clear"
-          : this.state === "paused"
-          ? "Paused"
-          : "Stand by";
-      return;
-    }
-
-    if (ratio < 0.45) {
-      this.speedLabel.textContent = "Quiet";
-    } else if (ratio < 0.8) {
-      this.speedLabel.textContent = "Warning";
-    } else {
-      this.speedLabel.textContent = "Critical";
-    }
-  }
-
-  update(dt, timestamp) {
-    if (this.state === "playing") {
-      this.elapsedMs = timestamp - this.startTimestamp;
-      this.updateBall(dt);
-    } else {
-      this.currentSpeed = 0;
-    }
-
-    this.displaySpeed = lerp(this.displaySpeed, this.currentSpeed, 0.14);
-    this.updateTrail(dt);
-    this.updateParticles(dt);
-    this.shake = Math.max(0, this.shake - dt * 34);
-    this.flash = Math.max(0, this.flash - dt * 1.6);
-
-    const speedRatio = this.displaySpeed / Math.max(1, this.speedThreshold);
-    const movingSafely =
-      this.state === "playing" &&
-      this.displaySpeed > 5 &&
-      speedRatio <= 1 &&
-      !this.failureReason;
-    if (movingSafely || speedRatio > 0.3) {
-      this.audio.updateMotion(speedRatio, movingSafely);
-    } else {
-      this.audio.quiet();
-    }
-    this.updateHUD();
-  }
-
-  updateParticles(dt) {
-    this.particles = this.particles
-      .map((particle) => ({
-        ...particle,
-        x: particle.x + particle.vx * dt,
-        y: particle.y + particle.vy * dt,
-        vx: particle.vx * (1 - dt * 2.4),
-        vy: particle.vy * (1 - dt * 2.4),
-        life: particle.life - dt,
-      }))
-      .filter((particle) => particle.life > 0);
-  }
-
-  drawBackground() {
-    this.context.drawImage(this.backgroundCache, 0, 0);
-  }
-
-  drawTrail() {
-    const ctx = this.context;
-    const trailColor = this.levelProfile.palette.trail;
-
-    this.player.trail.forEach((point, index) => {
-      const alpha = point.life * 0.18;
-      const radius = this.player.radius * (0.45 + index / this.player.trail.length);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = trailColor;
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = trailColor;
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+  addBeam(ax, ay, bx, by, color, glow, source) {
+    this.beams.push({
+      ax,
+      ay,
+      bx,
+      by,
+      color,
+      glow,
+      source,
+      life: 0.09,
+      maxLife: 0.09,
     });
   }
 
-  drawPlayer() {
-    const ctx = this.context;
-    const color = this.levelProfile.palette.player;
-
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 22;
-    ctx.shadowColor = color;
-    ctx.beginPath();
-    ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(this.player.x, this.player.y, this.player.radius + 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+  destroyTarget(target) {
+    target.destroyed = true;
+    this.spawnExplosion(target.x, target.y, target.kind === "turret" ? "#ff8c7c" : "#7beaff");
+    this.audio.destroy();
+    this.refreshHostileCount();
+    this.refreshObjectiveHint();
   }
 
-  drawBeacon(col, row, color, phaseOffset = 0) {
-    const ctx = this.context;
-    const center = this.cellCenter(col, row);
-    const phase = (performance.now() * 0.004 + phaseOffset) % (Math.PI * 2);
-    const radius = this.layout.cellSize * (0.34 + (Math.sin(phase) + 1) * 0.08);
+  firePlayerWeapon() {
+    if (this.player.cooldown > 0 || this.state !== "playing") return;
 
-    ctx.save();
-    ctx.globalAlpha = 0.42;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = color;
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    const wallHit = this.ray(this.player.x, this.player.y, this.player.angle, MAX_VIEW_DISTANCE);
+    const directionX = Math.cos(this.player.angle);
+    const directionY = Math.sin(this.player.angle);
+    let impactX = wallHit.hitX;
+    let impactY = wallHit.hitY;
+    let hitTarget = null;
+    let hitDistance = wallHit.distance;
+
+    const targets = [
+      ...this.turrets.filter((turret) => !turret.destroyed),
+      ...this.emitters.filter((emitter) => !emitter.destroyed),
+    ];
+
+    for (const target of targets) {
+      const deltaX = target.x - this.player.x;
+      const deltaY = target.y - this.player.y;
+      const forward = deltaX * directionX + deltaY * directionY;
+      if (forward <= 0 || forward >= hitDistance) continue;
+
+      const sideways = Math.abs(-directionY * deltaX + directionX * deltaY);
+      const radius = target.kind === "turret" ? TURRET_RADIUS + 0.06 : EMITTER_RADIUS + 0.04;
+      if (sideways > radius) continue;
+      if (!this.hasLineOfSight(this.player.x, this.player.y, target.x, target.y, radius)) continue;
+
+      hitDistance = forward;
+      impactX = target.x;
+      impactY = target.y;
+      hitTarget = target;
+    }
+
+    this.player.cooldown = PLAYER_COOLDOWN;
+    this.player.kick = 1;
+    this.player.detection = clamp(this.player.detection + (hitTarget ? 18 : 13), 0, 100);
+    this.addBeam(this.player.x, this.player.y, impactX, impactY, this.palette.playerBeam, this.palette.playerGlow, "player");
+    this.audio.playerFire();
+
+    if (hitTarget) {
+      hitTarget.health -= 1;
+      this.hitMarker = 0.14;
+      this.spawnSparks(impactX, impactY, hitTarget.kind === "turret" ? "#ff9b8a" : "#9ffbff");
+      this.audio.impact();
+
+      if (hitTarget.health <= 0) {
+        this.destroyTarget(hitTarget);
+      }
+    } else {
+      this.spawnSparks(impactX, impactY, this.palette.playerBeam, 5, 1.5);
+    }
   }
 
-  drawParticles() {
-    const ctx = this.context;
+  turretFire(turret) {
+    const angle = Math.atan2(this.player.y - turret.y, this.player.x - turret.x);
+    const targetDistance = Math.hypot(this.player.x - turret.x, this.player.y - turret.y);
+    const wallHit = this.ray(turret.x, turret.y, angle, targetDistance + 0.25);
+    let impactX = wallHit.hitX;
+    let impactY = wallHit.hitY;
+
+    if (wallHit.distance >= targetDistance - PLAYER_RADIUS) {
+      impactX = this.player.x;
+      impactY = this.player.y;
+      this.damageFlash = 0.36;
+      this.player.hull = 0;
+      this.addBeam(turret.x, turret.y, impactX, impactY, this.palette.alertBeam, this.palette.alertGlow, "enemy");
+      this.audio.turretFire();
+      this.failRun("A turret locked on and burned through the hull.");
+      return;
+    }
+
+    this.addBeam(turret.x, turret.y, impactX, impactY, this.palette.alertBeam, this.palette.alertGlow, "enemy");
+    this.spawnSparks(impactX, impactY, "#ff9b7f", 6, 1.8);
+    this.audio.turretFire();
+  }
+
+  failRun(message) {
+    if (this.state !== "playing") return;
+    this.state = "gameover";
+    this.input.releasePointerLock();
+    this.damageFlash = 0.5;
+    this.audio.fail();
+    this.refreshObjectiveHint();
+    this.updateHud();
+    this.setOverlayState("gameover-screen", {
+      kicker: "Hull Loss",
+      title: "VESSEL LOST",
+      description: message,
+      pattern: `${this.sectorName} / ${this.palette.code}`,
+      pace: this.alertLevel === 2 ? "Alarm state" : "Defense contact",
+      route: "Redeploy or return to menu",
+      primary: "Redeploy",
+      secondary: "Menu",
+    });
+  }
+
+  winRun() {
+    if (this.state !== "playing") return;
+    this.state = "win";
+    this.input.releasePointerLock();
+    this.audio.win();
+    this.saveBestTime(this.runTimeMs);
+    this.updateHud();
+    this.setOverlayState("win-screen", {
+      kicker: "Sector Clear",
+      title: "GATE BREACHED",
+      description: `Sector cleared in ${formatTime(this.runTimeMs)}. The next maze is ready to spin up.`,
+      pattern: `${this.sectorName} / ${this.palette.code}`,
+      pace: this.alertLevel === 2 ? "Escaped under alarm" : "Clean exit",
+      route: "Advance or return to menu",
+      primary: "Next Sector",
+      secondary: "Menu",
+    });
+  }
+
+  updateTurrets(delta) {
+    const creeping = this.input.isDown("shift");
+
+    for (const turret of this.turrets) {
+      if (turret.destroyed) continue;
+
+      const deltaX = this.player.x - turret.x;
+      const deltaY = this.player.y - turret.y;
+      const distance = Math.hypot(deltaX, deltaY);
+      const desiredAngle = Math.atan2(deltaY, deltaX);
+      const alertBoost = this.alertLevel === 2 ? 1.45 : this.alertLevel === 1 ? 1.15 : 1;
+      const maxTurn = delta * (1.8 * alertBoost);
+      const angleDelta = shortestAngle(turret.angle, desiredAngle);
+      turret.angle = normalizeAngle(turret.angle + clamp(angleDelta, -maxTurn, maxTurn));
+      turret.cooldown -= delta;
+      turret.pulse += delta * 2;
+
+      const viewRange = (creeping ? 5.6 : 8.3) + (this.alertLevel * 1.35);
+      const seesPlayer =
+        distance < viewRange &&
+        Math.abs(angleDelta) < 0.92 &&
+        this.hasLineOfSight(turret.x, turret.y, this.player.x, this.player.y, 0.22);
+
+      turret.glow = lerp(turret.glow, seesPlayer ? 1 : 0.25, delta * 6);
+
+      if (!seesPlayer) continue;
+
+      this.player.detection = clamp(
+        this.player.detection + delta * (distance < 4.2 ? 16 : 10) * (creeping ? 0.7 : 1),
+        0,
+        100
+      );
+
+      if (Math.abs(shortestAngle(turret.angle, desiredAngle)) < 0.14 && turret.cooldown <= 0) {
+        turret.cooldown = (this.alertLevel === 2 ? 0.92 : this.alertLevel === 1 ? 1.18 : 1.48) + Math.random() * 0.18;
+        this.turretFire(turret);
+      }
+    }
+  }
+
+  updateEmitters() {
+    for (const emitter of this.emitters) {
+      if (emitter.destroyed || !this.isEmitterActive(emitter)) continue;
+
+      const distance = distanceToSegment(
+        this.player.x,
+        this.player.y,
+        emitter.beamAx,
+        emitter.beamAy,
+        emitter.beamBx,
+        emitter.beamBy
+      );
+
+      if (distance < PLAYER_RADIUS * 0.78) {
+        this.player.hull = 0;
+        this.damageFlash = 0.5;
+        this.failRun("A corridor laser sliced through the ship.");
+        return;
+      }
+    }
+  }
+
+  updateEffects(delta) {
+    this.player.cooldown = Math.max(0, this.player.cooldown - delta);
+    this.player.kick = Math.max(0, this.player.kick - delta * 7);
+    this.hitMarker = Math.max(0, this.hitMarker - delta);
+    this.damageFlash = Math.max(0, this.damageFlash - delta);
+
+    this.beams = this.beams.filter((beam) => {
+      beam.life -= delta;
+      return beam.life > 0;
+    });
+
+    this.particles = this.particles.filter((particle) => {
+      particle.life -= delta;
+      particle.x += particle.vx * delta;
+      particle.y += particle.vy * delta;
+      particle.vx *= 0.97;
+      particle.vy *= 0.97;
+      return particle.life > 0;
+    });
+  }
+
+  update(delta) {
+    this.runTimeMs += delta * 1000;
+    this.movePlayer(delta);
+
+    if (this.input.consumeFire()) {
+      this.firePlayerWeapon();
+    }
+
+    this.player.detection = clamp(this.player.detection - delta * (this.input.isDown("shift") ? 10 : 6), 0, 100);
+    const previousAlert = this.alertLevel;
+    this.alertLevel = this.getAlertLevel();
+
+    if (this.alertLevel > 0) {
+      this.alarmCooldown -= delta;
+      if (this.alarmCooldown <= 0 || this.alertLevel > previousAlert) {
+        this.audio.alarm(this.alertLevel === 2);
+        this.alarmCooldown = this.alertLevel === 2 ? 1.15 : 2;
+      }
+    } else {
+      this.alarmCooldown = 0;
+    }
+
+    this.updateTurrets(delta);
+    if (this.state !== "playing") return;
+    this.updateEmitters();
+    if (this.state !== "playing") return;
+
+    this.updateEffects(delta);
+    this.refreshHostileCount();
+    this.aimTarget = this.getAimTarget();
+    this.refreshObjectiveHint();
+
+    const exitX = this.exit.col + 0.5;
+    const exitY = this.exit.row + 0.5;
+    if (this.gateOpen && Math.hypot(this.player.x - exitX, this.player.y - exitY) < 0.6) {
+      this.winRun();
+    }
+
+    this.updateHud();
+  }
+
+  getViewBob() {
+    return Math.sin(this.player.bob * 2.1) * 4 * this.player.movementBlend - this.player.kick * 5;
+  }
+
+  projectPoint(worldX, worldY) {
+    const deltaX = worldX - this.player.x;
+    const deltaY = worldY - this.player.y;
+    const rawDistance = Math.hypot(deltaX, deltaY);
+    if (rawDistance < 0.001) return null;
+
+    const angle = shortestAngle(this.player.angle, Math.atan2(deltaY, deltaX));
+    const correctedDistance = rawDistance * Math.cos(angle);
+    if (correctedDistance <= 0.01 || Math.abs(angle) > FOV / 2 + 0.35) return null;
+
+    const screenX = this.width / 2 + (Math.tan(angle) / Math.tan(FOV / 2)) * (this.width / 2);
+    if (screenX < -220 || screenX > this.width + 220) return null;
+    return {
+      x: screenX,
+      angle,
+      rawDistance,
+      distance: correctedDistance,
+      scale: this.height / correctedDistance,
+    };
+  }
+
+  isOccluded(projected, allowance = 0.15) {
+    if (!this.depthBuffer.length) return false;
+    const index = clamp(Math.floor((projected.x / this.width) * this.depthBuffer.length), 0, this.depthBuffer.length - 1);
+    return projected.distance > this.depthBuffer[index] + allowance;
+  }
+
+  drawProjectedLine(ax, ay, bx, by, color, glow, alpha = 1) {
+    const start = this.projectPoint(ax, ay);
+    const end = this.projectPoint(bx, by);
+    if (!start || !end) return;
+
+    const averageDistance = (start.distance + end.distance) * 0.5;
+    const lineWidth = clamp(16 / averageDistance, 1.2, 7);
+    this.ctx.save();
+    this.ctx.globalAlpha = alpha;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = lineWidth;
+    this.ctx.shadowBlur = 18;
+    this.ctx.shadowColor = glow;
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, this.height * 0.5 + this.getViewBob() + start.scale * 0.18);
+    this.ctx.lineTo(end.x, this.height * 0.5 + this.getViewBob() + end.scale * 0.18);
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
+  renderBackground() {
+    const horizon = this.height * 0.5 + this.getViewBob();
+    const skyGradient = this.ctx.createLinearGradient(0, 0, 0, horizon);
+    skyGradient.addColorStop(0, this.palette.skyTop);
+    skyGradient.addColorStop(1, this.palette.skyBottom);
+    this.ctx.fillStyle = skyGradient;
+    this.ctx.fillRect(0, 0, this.width, horizon);
+
+    const floorGradient = this.ctx.createLinearGradient(0, horizon, 0, this.height);
+    floorGradient.addColorStop(0, this.palette.floorTop);
+    floorGradient.addColorStop(1, this.palette.floorBottom);
+    this.ctx.fillStyle = floorGradient;
+    this.ctx.fillRect(0, horizon, this.width, this.height - horizon);
+
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.16;
+    this.ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    for (let index = 1; index < 7; index += 1) {
+      const y = horizon + ((this.height - horizon) / 7) * index;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(this.width, y);
+      this.ctx.stroke();
+    }
+    this.ctx.restore();
+  }
+
+  renderWalls() {
+    const horizon = this.height * 0.5 + this.getViewBob();
+    const sliceCount = Math.max(140, Math.floor(this.width / 5));
+    const sliceWidth = this.width / sliceCount;
+    this.depthBuffer = new Array(sliceCount);
+
+    for (let slice = 0; slice < sliceCount; slice += 1) {
+      const progress = slice / sliceCount;
+      const rayAngle = this.player.angle - FOV / 2 + progress * FOV;
+      const hit = this.ray(this.player.x, this.player.y, rayAngle);
+      const correctedDistance = Math.max(0.0001, hit.distance * Math.cos(rayAngle - this.player.angle));
+      this.depthBuffer[slice] = correctedDistance;
+
+      const wallHeight = Math.min(this.height * 1.25, (this.height * 0.92) / correctedDistance);
+      const top = horizon - wallHeight * 0.5;
+      const hue = this.palette.wallHue + (hit.vertical ? 0 : 8);
+      const saturation = hit.vertical ? 34 : 28;
+      const lightness = clamp(56 - correctedDistance * 5.3 - (hit.vertical ? 0 : 7), 12, 58);
+
+      this.ctx.fillStyle = `hsl(${hue} ${saturation}% ${lightness}%)`;
+      this.ctx.fillRect(slice * sliceWidth, top, sliceWidth + 1, wallHeight);
+
+      this.ctx.fillStyle = `rgba(255,255,255,${clamp(0.14 - correctedDistance * 0.012, 0.01, 0.14)})`;
+      this.ctx.fillRect(slice * sliceWidth, top + 1, sliceWidth + 1, Math.max(1, wallHeight * 0.045));
+    }
+  }
+
+  renderGate() {
+    const projected = this.projectPoint(this.exit.col + 0.5, this.exit.row + 0.5);
+    if (!projected || this.isOccluded(projected, 0.25)) return;
+
+    const size = projected.scale * 0.72;
+    const centerY = this.height * 0.5 + this.getViewBob() + size * 0.08;
+    const color = this.gateOpen ? this.palette.gate : this.palette.gateClosed;
+
+    this.ctx.save();
+    this.ctx.translate(projected.x, centerY);
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = Math.max(2, size * 0.06);
+    this.ctx.shadowBlur = 24;
+    this.ctx.shadowColor = color;
+    this.ctx.strokeRect(-size * 0.22, -size * 0.48, size * 0.44, size * 0.96);
+
+    if (this.gateOpen) {
+      this.ctx.fillStyle = "rgba(122, 255, 232, 0.18)";
+      this.ctx.fillRect(-size * 0.16, -size * 0.4, size * 0.32, size * 0.8);
+      this.ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      this.ctx.beginPath();
+      this.ctx.moveTo(-size * 0.06, -size * 0.36);
+      this.ctx.lineTo(-size * 0.06, size * 0.36);
+      this.ctx.moveTo(size * 0.06, -size * 0.36);
+      this.ctx.lineTo(size * 0.06, size * 0.36);
+      this.ctx.stroke();
+    } else {
+      this.ctx.beginPath();
+      this.ctx.moveTo(-size * 0.16, -size * 0.36);
+      this.ctx.lineTo(size * 0.16, size * 0.36);
+      this.ctx.moveTo(size * 0.16, -size * 0.36);
+      this.ctx.lineTo(-size * 0.16, size * 0.36);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
+  }
+
+  renderTurret(turret) {
+    const projected = this.projectPoint(turret.x, turret.y);
+    if (!projected || this.isOccluded(projected, 0.2)) return;
+
+    const size = projected.scale * 0.46;
+    const centerY = this.height * 0.5 + this.getViewBob() + size * 0.14;
+    const glowColor = turret.glow > 0.55 ? this.palette.alertBeam : this.palette.accent;
+    const barrelShift = Math.sin(shortestAngle(this.player.angle, turret.angle)) * size * 0.12;
+
+    this.ctx.save();
+    this.ctx.translate(projected.x, centerY);
+    this.ctx.shadowBlur = 20;
+    this.ctx.shadowColor = glowColor;
+    this.ctx.fillStyle = `rgba(255, 148, 120, ${0.12 + turret.glow * 0.24})`;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, size * 0.6, 0, TAU);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#10161f";
+    this.ctx.beginPath();
+    this.ctx.arc(0, size * 0.04, size * 0.26, 0, TAU);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#c5d9ff";
+    this.ctx.fillRect(-size * 0.22 + barrelShift, -size * 0.04, size * 0.38, size * 0.08);
+    this.ctx.fillStyle = glowColor;
+    this.ctx.beginPath();
+    this.ctx.arc(0, -size * 0.02, size * 0.08, 0, TAU);
+    this.ctx.fill();
+
+    for (let pip = 0; pip < turret.maxHealth; pip += 1) {
+      this.ctx.fillStyle = pip < turret.health ? "#ffd4c7" : "rgba(255,255,255,0.14)";
+      this.ctx.fillRect(-size * 0.18 + pip * size * 0.12, -size * 0.4, size * 0.08, size * 0.05);
+    }
+
+    this.ctx.restore();
+  }
+
+  renderEmitter(emitter) {
+    if (this.isEmitterActive(emitter)) {
+      this.drawProjectedLine(emitter.beamAx, emitter.beamAy, emitter.beamBx, emitter.beamBy, "#ff8e72", "rgba(255,142,114,0.8)", 0.9);
+    }
+
+    const projected = this.projectPoint(emitter.x, emitter.y);
+    if (!projected || this.isOccluded(projected, 0.16)) return;
+
+    const size = projected.scale * 0.26;
+    const centerY = this.height * 0.5 + this.getViewBob() + size * 0.2;
+    const active = this.isEmitterActive(emitter);
+
+    this.ctx.save();
+    this.ctx.translate(projected.x, centerY);
+    this.ctx.rotate(Math.PI / 4);
+    this.ctx.fillStyle = active ? "#ff9c82" : "#7adfff";
+    this.ctx.shadowBlur = 18;
+    this.ctx.shadowColor = active ? "#ff9c82" : "#7adfff";
+    this.ctx.fillRect(-size * 0.34, -size * 0.34, size * 0.68, size * 0.68);
+    this.ctx.rotate(-Math.PI / 4);
+
+    for (let pip = 0; pip < emitter.maxHealth; pip += 1) {
+      this.ctx.fillStyle = pip < emitter.health ? "#eef8ff" : "rgba(255,255,255,0.14)";
+      this.ctx.fillRect(-size * 0.26 + pip * size * 0.16, -size * 0.55, size * 0.12, size * 0.05);
+    }
+
+    this.ctx.restore();
+  }
+
+  renderParticle(particle) {
+    const projected = this.projectPoint(particle.x, particle.y);
+    if (!projected || this.isOccluded(projected, 0)) return;
+
+    const size = Math.max(1, projected.scale * particle.size);
+    const alpha = particle.life / particle.maxLife;
+    const centerY = this.height * 0.5 + this.getViewBob() + projected.scale * 0.18;
+
+    this.ctx.save();
+    this.ctx.globalAlpha = alpha;
+    this.ctx.fillStyle = particle.color;
+    this.ctx.shadowBlur = 12;
+    this.ctx.shadowColor = particle.color;
+    this.ctx.beginPath();
+    this.ctx.arc(projected.x, centerY, size, 0, TAU);
+    this.ctx.fill();
+    this.ctx.restore();
+  }
+
+  renderBeams() {
+    for (const beam of this.beams) {
+      const alpha = beam.life / beam.maxLife;
+      if (beam.source === "player") {
+        const projectedEnd = this.projectPoint(beam.bx, beam.by);
+        if (!projectedEnd) continue;
+
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        this.ctx.strokeStyle = beam.color;
+        this.ctx.lineWidth = 2.8;
+        this.ctx.shadowBlur = 18;
+        this.ctx.shadowColor = beam.glow;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.width * 0.5, this.height * 0.78 + this.player.kick * 10);
+        this.ctx.lineTo(projectedEnd.x, this.height * 0.5 + this.getViewBob() + projectedEnd.scale * 0.18);
+        this.ctx.stroke();
+        this.ctx.restore();
+      } else {
+        this.drawProjectedLine(beam.ax, beam.ay, beam.bx, beam.by, beam.color, beam.glow, alpha);
+      }
+    }
+  }
+
+  renderWeapon() {
+    const baseY = this.height - 38 + this.player.kick * 10;
+    this.ctx.save();
+    this.ctx.translate(this.width * 0.5, baseY);
+    this.ctx.fillStyle = "rgba(11, 17, 24, 0.92)";
+    this.ctx.strokeStyle = "rgba(180, 210, 255, 0.18)";
+    this.ctx.lineWidth = 1.2;
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(-66, 0);
+    this.ctx.lineTo(-26, -34);
+    this.ctx.lineTo(-10, -38);
+    this.ctx.lineTo(10, -38);
+    this.ctx.lineTo(26, -34);
+    this.ctx.lineTo(66, 0);
+    this.ctx.lineTo(44, 10);
+    this.ctx.lineTo(-44, 10);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = this.player.cooldown > 0.02 ? "rgba(255, 174, 134, 0.72)" : this.palette.gate;
+    this.ctx.fillRect(-10, -42, 20, 24);
+    this.ctx.fillStyle = "rgba(255,255,255,0.22)";
+    this.ctx.fillRect(-2, -56, 4, 20);
+
+    if (this.player.kick > 0.35) {
+      this.ctx.fillStyle = "rgba(255, 245, 220, 0.78)";
+      this.ctx.beginPath();
+      this.ctx.moveTo(-8, -58);
+      this.ctx.lineTo(0, -88 - this.player.kick * 12);
+      this.ctx.lineTo(8, -58);
+      this.ctx.closePath();
+      this.ctx.fill();
+    }
+
+    this.ctx.restore();
+  }
+
+  renderCrosshair() {
+    const centerX = this.width * 0.5;
+    const centerY = this.height * 0.5;
+    const color = this.aimTarget ? "#ffb195" : "#e7f2ff";
+    const gap = this.player.cooldown > 0 ? 8 + (this.player.cooldown / PLAYER_COOLDOWN) * 10 : 8;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 1.6;
+    this.ctx.shadowBlur = this.aimTarget ? 12 : 6;
+    this.ctx.shadowColor = color;
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX - gap - 10, centerY);
+    this.ctx.lineTo(centerX - gap, centerY);
+    this.ctx.moveTo(centerX + gap, centerY);
+    this.ctx.lineTo(centerX + gap + 10, centerY);
+    this.ctx.moveTo(centerX, centerY - gap - 10);
+    this.ctx.lineTo(centerX, centerY - gap);
+    this.ctx.moveTo(centerX, centerY + gap);
+    this.ctx.lineTo(centerX, centerY + gap + 10);
+    this.ctx.stroke();
+
+    if (this.hitMarker > 0) {
+      this.ctx.globalAlpha = this.hitMarker / 0.14;
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX - 12, centerY - 12);
+      this.ctx.lineTo(centerX - 4, centerY - 4);
+      this.ctx.moveTo(centerX + 12, centerY - 12);
+      this.ctx.lineTo(centerX + 4, centerY - 4);
+      this.ctx.moveTo(centerX - 12, centerY + 12);
+      this.ctx.lineTo(centerX - 4, centerY + 4);
+      this.ctx.moveTo(centerX + 12, centerY + 12);
+      this.ctx.lineTo(centerX + 4, centerY + 4);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
+  }
+
+  renderScreenEffects() {
+    if (this.alertLevel > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = this.alertLevel === 2 ? "rgba(255, 102, 72, 0.08)" : "rgba(255, 184, 104, 0.05)";
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.restore();
+    }
+
+    if (this.damageFlash > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = `rgba(255, 90, 90, ${this.damageFlash * 0.28})`;
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.restore();
+    }
+  }
+
+  render() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.renderBackground();
+    this.renderWalls();
+    this.renderGate();
+
+    const drawables = [];
+
+    for (const turret of this.turrets) {
+      if (!turret.destroyed) {
+        const projected = this.projectPoint(turret.x, turret.y);
+        if (projected) drawables.push({ distance: projected.distance, render: () => this.renderTurret(turret) });
+      }
+    }
+
+    for (const emitter of this.emitters) {
+      if (!emitter.destroyed) {
+        const projected = this.projectPoint(emitter.x, emitter.y);
+        if (projected) drawables.push({ distance: projected.distance, render: () => this.renderEmitter(emitter) });
+      }
+    }
 
     for (const particle of this.particles) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, particle.life * 1.4);
-      ctx.fillStyle = particle.color;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = particle.color;
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      const projected = this.projectPoint(particle.x, particle.y);
+      if (projected) drawables.push({ distance: projected.distance, render: () => this.renderParticle(particle) });
     }
-  }
 
-  drawFrame() {
-    const shakeX = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
-    const shakeY = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
-
-    this.context.save();
-    this.context.translate(shakeX, shakeY);
-    this.drawBackground();
-    this.context.drawImage(this.mazeCache, 0, 0);
-    this.drawBeacon(this.maze.start.col, this.maze.start.row, "rgba(74, 222, 128, 0.9)", 0);
-    this.drawBeacon(this.maze.exit.col, this.maze.exit.row, "rgba(96, 165, 250, 0.9)", 1.4);
-    this.drawTrail();
-    this.drawParticles();
-    this.drawPlayer();
-    this.context.restore();
-
-    if (this.flash > 0) {
-      this.context.save();
-      this.context.globalAlpha = this.flash;
-      this.context.fillStyle =
-        this.state === "won" ? "rgba(96, 165, 250, 0.16)" : "rgba(251, 113, 133, 0.16)";
-      this.context.fillRect(0, 0, this.layout.width, this.layout.height);
-      this.context.restore();
+    drawables.sort((left, right) => right.distance - left.distance);
+    for (const drawable of drawables) {
+      drawable.render();
     }
+
+    this.renderBeams();
+    this.renderWeapon();
+    this.renderCrosshair();
+    this.renderScreenEffects();
   }
 
   loop(timestamp) {
-    const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.033);
-    this.lastFrameTime = timestamp;
+    if (!this.lastTime) this.lastTime = timestamp;
+    const delta = Math.min(0.05, (timestamp - this.lastTime) / 1000);
+    this.lastTime = timestamp;
 
-    this.update(dt, timestamp);
-    this.drawFrame();
+    if (this.state === "playing") {
+      this.update(delta);
+    } else {
+      this.updateEffects(delta);
+      this.input.clearTransient();
+    }
+
+    this.render();
     requestAnimationFrame((nextTimestamp) => this.loop(nextTimestamp));
   }
 }
 
-window.addEventListener("load", () => {
+window.addEventListener("DOMContentLoaded", () => {
   new Game();
 });
